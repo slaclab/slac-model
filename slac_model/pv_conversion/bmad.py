@@ -1,0 +1,230 @@
+from functools import partial, wraps
+from typing import Any, Callable, Optional
+from pytao import Tao
+
+def validate_element(element_type: str):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(tao: Tao, element_name: str, *args, **kwargs):
+            element_attributes = tao.ele_gen_attribs(element_name)
+            if element_attributes["TYPE"].lower() != element_type.lower():
+                raise ValueError(f"Element {element_name} is not of type {element_type}")
+            return func(tao, element_name, *args, **kwargs)
+        return wrapper
+    return decorator
+
+def set_element_attribute(tao: Tao, element_name: str, attribute_name: str, value):
+    """
+    Set an attribute of a Bmad element.
+
+    Parameters:
+    -----------
+    tao : Tao
+        An instance of the Tao class.
+    element_name : str
+        The name of the Bmad element whose attribute is to be set.
+    attribute_name : str
+        The name of the attribute to set.
+    value : any
+        The value to set the attribute to.
+
+    """
+    tao.cmd(f"set ele {element_name} {attribute_name} = {value}")
+
+def get_element_attribute(tao: Tao, element_name: str, attribute_name: str):
+    """
+    Get an attribute of a Bmad element.
+
+    Parameters:
+    -----------
+    tao : Tao
+        An instance of the Tao class.
+    element_name : str
+        The name of the Bmad element whose attribute is to be retrieved.
+    attribute_name : str
+        The name of the attribute to retrieve.
+
+    Returns:
+    --------
+    The value of the specified attribute.
+    """
+    return tao.ele_gen_attribs(element_name)[attribute_name]
+
+@validate_element(element_type="overlay")
+def get_overlay_attribute(tao: Tao, element_name: str, attribute_name: str):
+    """
+    Get an overlay attribute of a Bmad element.
+
+    Parameters:
+    -----------
+    tao : Tao
+        An instance of the Tao class.
+    element_name : str
+        The name of the Bmad element whose overlay attribute is to be retrieved.
+    attribute_name : str
+        The name of the overlay attribute to retrieve.
+
+    Returns:
+    --------
+    The value of the specified overlay attribute.
+    """
+    return tao.ele_gen_attribs(element_name).control_vars[attribute_name]
+
+@validate_element(element_type="overlay")
+def set_overlay_attribute(tao: Tao, element_name: str, attribute_name: str, value: Any):
+    """
+    Set an overlay attribute of a Bmad element.
+
+    Parameters:
+    -----------
+    tao : Tao
+        An instance of the Tao class.
+    element_name : str
+        The name of the Bmad element whose overlay attribute is to be set.
+    attribute_name : str
+        The name of the overlay attribute to set.
+    value : any
+        The value to set the overlay attribute to.
+
+    """
+    tao.ele_gen_attribs(element_name).control_vars[attribute_name] = value
+
+def _make_bctrl_funcs(element_type, field_attr, to_bctrl, from_bctrl):
+    @validate_element(element_type=element_type)
+    def get_bctrl(tao: Tao, element_name: str):
+        return to_bctrl(tao.ele_gen_attribs(element_name))
+
+    @validate_element(element_type=element_type)
+    def set_bctrl(tao: Tao, element_name: str, value: float):
+        attrs = tao.ele_gen_attribs(element_name)
+        set_element_attribute(tao, element_name, field_attr, from_bctrl(attrs, value))
+
+    return get_bctrl, set_bctrl
+
+
+get_quadrupole_bctrl, set_quadrupole_bctrl = _make_bctrl_funcs(
+    element_type="quadrupole",
+    field_attr="B1_GRADIENT",
+    to_bctrl=lambda attrs: -attrs["B1_GRADIENT"] * attrs["L"] * 10,
+    from_bctrl=lambda attrs, value: -value / (attrs["L"] * 10),
+)
+get_quadrupole_bact = get_quadrupole_bctrl
+
+get_solenoid_bctrl, set_solenoid_bctrl = _make_bctrl_funcs(
+    element_type="solenoid",
+    field_attr="BS_FIELD",
+    to_bctrl=lambda attrs: -attrs["BS_FIELD"] * 10,
+    from_bctrl=lambda attrs, value: -value / 10,
+)
+get_solenoid_bact = get_solenoid_bctrl
+
+get_kicker_bctrl, set_kicker_bctrl = _make_bctrl_funcs(
+    element_type="kicker",
+    field_attr="BL_KICK",
+    to_bctrl=lambda attrs: -attrs["BL_KICK"] * 10,
+    from_bctrl=lambda attrs, value: -value / 10,
+)
+get_kicker_bact = get_kicker_bctrl
+
+
+@validate_element(element_type="sbend")
+def get_sbend_bctrl(tao: Tao, element_name: str) -> float:
+    attrs = tao.ele_gen_attribs(element_name)
+    if attrs["G"] == 0:
+        return 0.0
+    momentum = attrs["P0C"] * (1 + attrs["DG"] / attrs["G"])
+    return momentum * 1e-9
+
+
+@validate_element(element_type="sbend")
+def set_sbend_bctrl(tao: Tao, element_name: str, value: float):
+    attrs = tao.ele_gen_attribs(element_name)
+    relative_momentum = (value * 1e9 - attrs["P0C"]) / attrs["P0C"]
+    set_element_attribute(tao, element_name, "DG", relative_momentum * attrs["G"])
+
+
+get_sbend_bact = get_sbend_bctrl
+
+def get_bpm_loc(tao: Tao, element_name: str, coordinate: str) -> float:
+    """
+    Get the beam centroid along the `coordinate` direction in mm.
+
+    Parameters:
+    -----------
+    tao : Tao
+        An instance of the Tao class.
+    element_name : str
+        The name of the BPM element.
+    coordinate : str
+        The coordinate to retrieve (`x` or `y`).
+
+    Returns:
+    --------
+    float
+        The location of the BPM in the specified coordinate.
+    """
+    if coordinate.lower() not in ['x', 'y']:
+        raise ValueError("Coordinate must be 'x' or 'y'")
+    return getattr(tao.ele(element_name).orbit, coordinate.lower()) * 1e3
+
+get_bpm_x = partial(get_bpm_loc, coordinate="x")
+get_bpm_y = partial(get_bpm_loc, coordinate="y")
+
+def _make_overlay_funcs(
+    attr_name: str,
+    scale: float = 1.0,
+    to_val: Optional[Callable[[Any], Any]] = None,
+    from_val: Optional[Callable[[Any], Any]] = None,
+):
+    def get_func(tao: Tao, element_name: str):
+        val = get_overlay_attribute(tao, element_name, attr_name)
+        return to_val(val) if to_val else val * scale
+
+    def set_func(tao: Tao, element_name: str, value: Any):
+        val = from_val(value) if from_val else value / scale
+        set_overlay_attribute(tao, element_name, attr_name, val)
+
+    return get_func, set_func
+
+
+def _make_scaled_element_funcs(attribute_name: str, scale_factor: float):
+    def get_func(tao: Tao, element_name: str):
+        return get_element_attribute(tao, element_name, attribute_name) * scale_factor
+
+    def set_func(tao: Tao, element_name: str, value: float):
+        set_element_attribute(tao, element_name, attribute_name, value / scale_factor)
+
+    return get_func, set_func
+
+
+get_cavity_areq, set_cavity_areq = _make_scaled_element_funcs("VOLTAGE", 1e6)
+get_cavity_preq, set_cavity_preq = _make_scaled_element_funcs("PHI0", 1 / 360.0)
+get_cavity_areq_readback = get_cavity_areq
+get_cavity_preq_readback = get_cavity_preq
+
+
+def get_cavity_modecfg(tao: Tao, element_name: str) -> str:
+    return "ACCEL_STDBY" if tao.ele(element_name).head.is_on else "STDBY"
+
+
+def set_cavity_modecfg(tao: Tao, element_name: str, value: str):
+    if value == "ACCEL_STDBY":
+        set_element_attribute(tao, element_name, "is_on", True)
+    elif value == "STDBY":
+        set_element_attribute(tao, element_name, "is_on", False)
+    else:
+        raise ValueError(f"Invalid value for CavityMODECFGVariable: {value}")
+
+def _klystron_stat_from_pv(value: int) -> bool:
+    if value not in (0, 1):
+        raise ValueError("Status must be 0 (off) or 1 (on)")
+    return value == 0
+
+get_klystron_enld, set_klystron_enld = _make_overlay_funcs("ENLD_MEV", scale=1e-6)
+get_klystron_pdes, set_klystron_pdes = _make_overlay_funcs("PHASE_DEG")
+get_klystron_pact = get_klystron_pdes
+get_klystron_stat, set_klystron_stat = _make_overlay_funcs(
+    "IN_USE",
+    to_val=lambda b: 0 if b else 1,
+    from_val=_klystron_stat_from_pv,
+)
