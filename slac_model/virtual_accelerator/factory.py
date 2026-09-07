@@ -353,4 +353,3 @@ def build_cheetah_model(spec: CheetahModelSpec):
     )
 
     return LUMECheetahModel(simulator=simulator, action_variables=variables)
-    return variables
