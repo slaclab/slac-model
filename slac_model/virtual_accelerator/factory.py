@@ -9,6 +9,9 @@ import yaml
 from lume.variables import Variable
 
 from ..utils import _isinstance_if_importable, get_all_element_types
+from ..utils.bmad import slice_lattice_bmad
+from ..utils.cheetah import slice_lattice_cheetah
+from ..utils.impact import slice_lattice_impact
 from .actions import ImpactGroupVariable, create_classes
 
 
@@ -131,12 +134,14 @@ class BmadModelSpec:
 
 def build_bmad_model(
     spec: BmadModelSpec,
-    start_element: str,
-    end_element: str,
+    first_element: str,
+    last_element: str,
     track_beam: bool = False,
     custom_beam_path: Optional[str] = None,
     custom_tao_commands: Optional[list[str]] = None,
     custom_aliases: Optional[dict[str, str]] = None,
+    include_first: bool = True,
+    include_last: bool = True,
 ):
     """Build a lattice-specific `LUMEBmadModel`, using `build_actions` for variable construction."""
     from pytao import Tao
@@ -144,9 +149,19 @@ def build_bmad_model(
 
     lattice_root = os.environ[spec.lattice_env_var]
     init_file = os.path.join(lattice_root, spec.tao_init_relpath)
-    tao = Tao(f"-init {init_file} -noplot -slice_lattice {start_element}:{end_element}")
 
-    tao.cmd(f"set beam track_start = {start_element}")
+    if include_first and include_last:
+        first_bound, last_bound = first_element, last_element
+    else:
+        # Exclusion requires the full (unsliced) lattice ordering to find the neighboring element.
+        unsliced_tao = Tao(f"-init {init_file} -noplot")
+        first_bound, last_bound = slice_lattice_bmad(
+            unsliced_tao, first_element, last_element, include_first=include_first, include_last=include_last
+        )
+
+    tao = Tao(f"-init {init_file} -noplot -slice_lattice {first_bound}:{last_bound}")
+
+    tao.cmd(f"set beam track_start = {first_bound}")
 
     if custom_tao_commands is not None:
         for cmd in custom_tao_commands:
@@ -177,13 +192,13 @@ def build_bmad_model(
             beam_path is None
             and spec.default_track_start is not None
             and spec.default_beam_relpath is not None
-            and start_element == spec.default_track_start
+            and first_element == spec.default_track_start
         ):
             beam_path = os.path.join(lattice_root, spec.default_beam_relpath)
 
         if beam_path is None:
             warnings.warn(
-                "track_beam=True for start_element "
+                "track_beam=True for first_element "
                 f"!= {spec.default_track_start} without providing custom_beam_path; "
                 "beam tracking was not enabled."
             )
@@ -206,7 +221,10 @@ class ImpactModelSpec:
     n_particles: int
     variable_config: Optional[dict] = None
     screen_config: Optional[dict] = None
-    stop_location: Optional[Union[str, float]] = None
+    first_element: Optional[Union[str, float]] = None
+    last_element: Optional[Union[str, float]] = None
+    include_first: bool = True
+    include_last: bool = True
     impact_file: Optional[str] = None
     impact_yaml_file: Optional[str] = None
     numprocs: int = 1
@@ -235,25 +253,6 @@ def _get_impact_and_distgen(spec: ImpactModelSpec):
     distgen = Generator(distgen_file)
 
     return impact, distgen
-
-
-def _set_stop_location(impact, stop_location: Union[str, float]):
-    """Truncate `impact`'s lattice at `stop_location` (an element name or z position)."""
-    if isinstance(stop_location, str):
-        try:
-            element = impact.ele[stop_location]
-            stop_location_z = element["s"]
-        except KeyError:
-            raise ValueError(f"Element {stop_location!r} not found in the impact model.")
-    else:
-        stop_location_z = float(stop_location)
-
-    impact.stop = stop_location_z
-    impact.ele = {k: v for k, v in impact.ele.items() if v["s"] <= impact.stop}
-    impact.input["lattice"] = [
-        elem for elem in impact.lattice if elem.get("s", float("inf")) <= impact.stop
-    ]
-    return impact
 
 
 def _get_actions_from_groups(impact, spec: ImpactModelSpec) -> list[ImpactGroupVariable]:
@@ -288,8 +287,14 @@ def build_impact_model(spec: ImpactModelSpec):
     impact.numprocs = spec.numprocs
     impact.header["Bcurr"] = 1 if spec.space_charge else 0
 
-    if spec.stop_location is not None:
-        impact = _set_stop_location(impact, spec.stop_location)
+    if spec.first_element is not None or spec.last_element is not None:
+        impact = slice_lattice_impact(
+            impact,
+            first_element=spec.first_element,
+            last_element=spec.last_element,
+            include_first=spec.include_first,
+            include_last=spec.include_last,
+        )
 
     impact.run()
 
@@ -323,6 +328,10 @@ class CheetahModelSpec:
     energy: Optional[float] = None
     variable_config: Optional[dict] = None
     screen_config: Optional[dict] = None
+    first_element: Optional[str] = None
+    last_element: Optional[str] = None
+    include_first: bool = True
+    include_last: bool = True
 
 
 def build_cheetah_model(spec: CheetahModelSpec):
@@ -335,6 +344,15 @@ def build_cheetah_model(spec: CheetahModelSpec):
 
     lattice_root = os.environ[spec.lattice_env_var]
     segment = Segment.from_lattice_json(os.path.join(lattice_root, spec.lattice_relpath))
+
+    if spec.first_element is not None or spec.last_element is not None:
+        segment = slice_lattice_cheetah(
+            segment,
+            first_element=spec.first_element,
+            last_element=spec.last_element,
+            include_first=spec.include_first,
+            include_last=spec.include_last,
+        )
 
     if spec.initial_beam_relpath is not None:
         from beamphysics import ParticleGroup

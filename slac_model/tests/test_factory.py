@@ -107,3 +107,34 @@ def test_build_cheetah_model(tmp_path, monkeypatch):
     assert names == {"Q1:BCTRL", "BPM1:X"}
     # defaults to a single particle at the origin when no initial_beam_relpath is given
     assert model.simulator.beam_distribution.num_particles == 1
+
+
+def test_build_cheetah_model_with_slicing(tmp_path, monkeypatch):
+    segment = Segment(
+        elements=[
+            Quadrupole(name="Q1", length=torch.tensor(0.1), k1=torch.tensor(1.0)),
+            BPM(name="BPM1"),
+            Quadrupole(name="Q2", length=torch.tensor(0.1), k1=torch.tensor(1.0)),
+        ]
+    )
+    lattice_path = tmp_path / "lattice.json"
+    segment.to_lattice_json(str(lattice_path))
+    monkeypatch.setenv("TEST_LATTICE_ROOT", str(tmp_path))
+
+    spec = CheetahModelSpec(
+        lattice_env_var="TEST_LATTICE_ROOT",
+        lattice_relpath="lattice.json",
+        energy=1e9,
+        first_element="BPM1",
+        last_element="Q2",
+        include_first=False,
+        variable_config={
+            "Quadrupole": {"BCTRL": "QuadrupoleBCTRLVariable"},
+            "BPM": {"X": "BPMXVariable"},
+        },
+    )
+
+    model = build_cheetah_model(spec)
+
+    # BPM1 excluded (include_first=False), Q1 excluded (before first_element)
+    assert set(model.supported_variables) == {"Q2:BCTRL"}
