@@ -96,3 +96,18 @@ def create_classes(module: ModuleType) -> dict:
         )
         for class_name, variable_type, get_func, set_func, required_fields, field_defaults in specs
     }
+
+
+class ImpactGroupVariable(ScalarVariable, WritableActionMixin):
+    """Impact-only variable for a `group` entry that spans multiple elements (`simulator[group_name][group_key]`)."""
+
+    group_name: str
+    group_key: str
+    scale: float = 1.0
+    offset: float = 0.0
+
+    def _get(self, simulator: Any) -> Any:
+        return (simulator[self.group_name][self.group_key] - self.offset) / self.scale
+
+    def _set(self, simulator: Any, value: Any) -> None:
+        simulator[self.group_name][self.group_key] = value * self.scale + self.offset
