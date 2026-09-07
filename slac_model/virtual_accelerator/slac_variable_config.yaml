@@ -1,0 +1,85 @@
+BPM:
+  X: BPMXVariable
+  Y: BPMYVariable
+  TMIT: BPMTMITDummyVariable
+
+Quadrupole:
+  BCTRL: QuadrupoleBCTRLVariable
+  BCTRL.DRVL: BminVariable
+  BCTRL.DRVH: BmaxVariable
+  BACT: QuadrupoleBACTVariable
+  BDES: QuadrupoleBCTRLVariable
+  BMAX: BmaxVariable
+  BMIN: BminVariable
+  STATCTRLSUB.T: StatusVariable
+  CTRL: ControlStateVariable
+
+Solenoid:
+  BCTRL: SolenoidBCTRLVariable
+  BCTRL.DRVL: BminVariable
+  BCTRL.DRVH: BmaxVariable
+  BACT: SolenoidBACTVariable
+  BDES: SolenoidBCTRLVariable
+  BMIN: BminVariable
+  BMAX: BmaxVariable
+  STATCTRLSUB.T: StatusVariable
+  CTRL: ControlStateVariable
+
+SBend:
+  BCTRL: SBendBCTRLVariable
+  BCTRL.DRVL: BminVariable
+  BCTRL.DRVH: BmaxVariable
+  BACT: SBendBACTVariable
+  BDES: SBendBCTRLVariable
+  BMIN: BminVariable
+  BMAX: BmaxVariable
+  STATCTRLSUB.T: StatusVariable
+  CTRL: ControlStateVariable
+
+HorizontalCorrector:
+  BCTRL: KickerBCTRLVariable
+  BCTRL.DRVL: BminVariable
+  BCTRL.DRVH: BmaxVariable
+  BACT: KickerBACTVariable
+  BDES: KickerBCTRLVariable
+  BMIN: BminVariable
+  BMAX: BmaxVariable
+  STATCTRLSUB.T: StatusVariable
+  CTRL: ControlStateVariable
+
+VerticalCorrector:
+  BCTRL: KickerBCTRLVariable
+  BCTRL.DRVL: BminVariable
+  BCTRL.DRVH: BmaxVariable
+  BACT: KickerBACTVariable
+  BDES: KickerBCTRLVariable
+  BMIN: BminVariable
+  BMAX: BmaxVariable
+  STATCTRLSUB.T: StatusVariable
+  CTRL: ControlStateVariable
+
+Klystron:
+  ENLD: KlystronENLDVariable # subclass of BmadScalarVariable
+  PACT: KlystronPACTVariable # subclass of BmadScalarVariable
+  PDES: KlystronPDESVariable # subclass of BmadScalarVariable
+  BEAMCODE1_STAT: KlystronStatVariable # subclass of BmadEnumVariable
+  BEAMCODE2_STAT: KlystronStatVariable # subclass of BmadEnumVariable
+  # SWRD: KlystronSWRDVariable # subclass of BmadIntVariable
+  # STAT: KlystronSTATVariable # subclass of BmadIntVariable
+  # HDSC: KlystronHDSCVariable # subclass of BmadIntVariable
+  # DSTA: KlystronDSTAVariable # subclass of NDVariable
+
+Crab_Cavity:
+  AREQ: CavityAREQVariable
+  ADES: CavityAREQVariable
+  AFBENB: DummyEnumVariable
+  AFBST: DummyEnumVariable
+  AMPL_W0CH0: CavityAREQReadbackVariable
+  MODECFG: CavityMODECFGVariable
+  PREQ: CavityPREQVariable
+  PACT_AVGNT: CavityPREQReadbackVariable
+  PDES: CavityPREQVariable
+  PFBENB: DummyEnumVariable
+  PFBST: DummyEnumVariable
+  RF_ENABLE: DummyEnumVariable
+  REFPOC: CavityPREQVariable
