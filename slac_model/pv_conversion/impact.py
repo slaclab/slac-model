@@ -1,4 +1,7 @@
-from lume_impact import Impact
+from impact import Impact
+
+from . import _screen_common
+from ._screen_common import histogram_screen_image
 
 def set_quadrupole_bctrl(simulator: Impact, element_name: str, value: float):
     effective_length = simulator.ele[element_name]["L_effective"]
@@ -10,3 +13,21 @@ def get_quadrupole_bctrl(simulator: Impact, element_name: str) -> float:
 
 
 get_quadrupole_bact = get_quadrupole_bctrl
+
+
+def get_screen_image(simulator: Impact, element_name: str, shape, pixel_size):
+    """Histogram the tracked beam at `element_name` into a `shape`-sized image, normalized to unit scale."""
+    beam = simulator.particles[element_name]
+    return histogram_screen_image(beam, shape, pixel_size, normalize=True)
+
+
+get_screen_image_array_size = _screen_common.get_screen_image_array_size
+get_screen_resolution = _screen_common.get_screen_resolution
+
+
+def get_screen_x(simulator: Impact, element_name: str) -> float:
+    return simulator.particles[element_name].x.mean() * 1e3
+
+
+def get_screen_y(simulator: Impact, element_name: str) -> float:
+    return simulator.particles[element_name].y.mean() * 1e3

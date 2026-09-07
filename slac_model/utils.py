@@ -59,10 +59,10 @@ def get_all_element_types_impact(impact) -> dict[str, str]:
 	return normalized_types
 
 
-def get_all_element_types_cheetah(segment) -> dict[str, str]:
+def get_all_element_types_cheetah(simulator) -> dict[str, str]:
 	"""Return normalized Cheetah element names mapped to their element types."""
 	element_types = {}
-	for element in segment.elements:
+	for element in simulator.segment.elements:
 		element_name = element.name.split("#", 1)[0]
 		element_type = type(element).__name__
 		element_type = _CHEETAH_ELEMENT_TYPE_ALIASES.get(element_type, element_type)
@@ -70,25 +70,31 @@ def get_all_element_types_cheetah(segment) -> dict[str, str]:
 	return element_types
 
 
+def _isinstance_if_importable(simulator, import_path: str, class_name: str) -> bool:
+	"""Return whether `simulator` is an instance of `class_name`, tolerating a missing optional dependency."""
+	try:
+		module = __import__(import_path, fromlist=[class_name])
+		cls = getattr(module, class_name)
+	except ImportError:
+		return False
+	return isinstance(simulator, cls)
+
+
 def get_all_element_types(simulator) -> dict[str, str]:
 	"""Dispatch element-type extraction based on the simulator interface."""
 
-	from pytao import Tao
-	from impact import Impact
-	from cheetah.accelerator import Segment
-
-	if isinstance(simulator, Tao):
+	if _isinstance_if_importable(simulator, "pytao", "Tao"):
 		return get_all_element_types_bmad(simulator)
 
-	if isinstance(simulator, Impact):
+	if _isinstance_if_importable(simulator, "impact", "Impact"):
 		return get_all_element_types_impact(simulator)
 
-	if isinstance(simulator, Segment):
+	if _isinstance_if_importable(simulator, "lume_cheetah.simulator", "CheetahSimulator"):
 		return get_all_element_types_cheetah(simulator)
 
 	raised_type = type(simulator).__name__
 	raised_module = type(simulator).__module__
 	raise TypeError(
 		f"Unsupported simulator type {raised_module}.{raised_type}; expected "
-		"a Bmad Tao, Impact simulator, or Cheetah segment."
+		"a Bmad Tao, Impact simulator, or Cheetah CheetahSimulator."
 	)

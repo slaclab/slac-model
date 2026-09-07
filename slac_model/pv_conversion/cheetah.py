@@ -7,18 +7,18 @@ def _get_element(simulator, element_name: str):
 	return getattr(simulator.segment, element_name)
 
 
-def _get_energy(simulator) -> float:
-	return simulator.segment.energy
+def _get_energy(simulator, element_name: str) -> float:
+	return simulator.energies[element_name]
 
 
 def _get_magnet_value(simulator, element_name: str, attribute_name: str) -> float:
 	element = _get_element(simulator, element_name)
-	return getattr(element, attribute_name) * get_magnetic_rigidity(_get_energy(simulator))
+	return getattr(element, attribute_name) * get_magnetic_rigidity(_get_energy(simulator, element_name))
 
 
 def _set_magnet_value(simulator, element_name: str, attribute_name: str, value: float):
 	element = _get_element(simulator, element_name)
-	setattr(element, attribute_name, value / get_magnetic_rigidity(_get_energy(simulator)))
+	setattr(element, attribute_name, value / get_magnetic_rigidity(_get_energy(simulator, element_name)))
 
 
 def get_quadrupole_bctrl(simulator, element_name: str) -> float:
@@ -26,13 +26,13 @@ def get_quadrupole_bctrl(simulator, element_name: str) -> float:
 	return (
 		element.k1
 		* element.length
-		* get_magnetic_rigidity(_get_energy(simulator))
+		* get_magnetic_rigidity(_get_energy(simulator, element_name))
 	)
 
 
 def set_quadrupole_bctrl(simulator, element_name: str, value: float):
 	element = _get_element(simulator, element_name)
-	element.k1 = value / get_magnetic_rigidity(_get_energy(simulator)) / element.length
+	element.k1 = value / get_magnetic_rigidity(_get_energy(simulator, element_name)) / element.length
 
 
 get_quadrupole_bact = get_quadrupole_bctrl
@@ -109,16 +109,21 @@ def set_cavity_preq(simulator, element_name: str, value: float):
 get_cavity_preq_readback = get_cavity_preq
 
 
-def get_screen_image(simulator, element_name: str):
+def get_screen_image(simulator, element_name: str, shape=None, pixel_size=None):
+	# shape/pixel_size are accepted for backend-signature parity but unused: Cheetah screens carry their own geometry.
 	return _get_element(simulator, element_name).reading.mT * 65535
 
 
-def get_screen_image_array_size(simulator, element_name: str, index: int):
+def get_screen_image_array_size(simulator, element_name: str, shape=None, index: int = 0):
 	return _get_element(simulator, element_name).resolution[index]
 
 
-def get_screen_resolution(simulator, element_name: str) -> float:
+def get_screen_resolution(simulator, element_name: str, pixel_size=None) -> float:
 	return _get_element(simulator, element_name).pixel_size[0] * 1e6
+
+
+def get_cavity_modecfg(simulator, element_name: str) -> str:
+	return "ACCEL_STDBY"
 
 
 def get_screen_pneumatic(simulator, element_name: str) -> float:

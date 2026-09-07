@@ -1,6 +1,11 @@
 from functools import partial, wraps
 from typing import Any, Callable, Optional
+
+import numpy as np
 from pytao import Tao
+
+from . import _screen_common
+from ._screen_common import histogram_screen_image
 
 def validate_element(element_type: str):
     def decorator(func):
@@ -169,6 +174,8 @@ def get_bpm_loc(simulator: Tao, element_name: str, coordinate: str) -> float:
 
 get_bpm_x = partial(get_bpm_loc, coordinate="x")
 get_bpm_y = partial(get_bpm_loc, coordinate="y")
+get_screen_x = get_bpm_x
+get_screen_y = get_bpm_y
 
 def _make_overlay_funcs(
     attr_name: str,
@@ -223,6 +230,19 @@ def _klystron_stat_from_pv(value: int) -> bool:
 get_klystron_enld, set_klystron_enld = _make_overlay_funcs("ENLD_MEV", scale=1e-6)
 get_klystron_pdes, set_klystron_pdes = _make_overlay_funcs("PHASE_DEG")
 get_klystron_pact = get_klystron_pdes
+
+
+def get_screen_image(simulator: Tao, element_name: str, shape, pixel_size):
+    """Histogram the tracked beam at `element_name` into a `shape`-sized image."""
+    if simulator.tao_global()["track_type"] != "beam":
+        return np.zeros(shape)
+
+    beam = simulator.particles(element_name)
+    return histogram_screen_image(beam, shape, pixel_size)
+
+
+get_screen_image_array_size = _screen_common.get_screen_image_array_size
+get_screen_resolution = _screen_common.get_screen_resolution
 get_klystron_stat, set_klystron_stat = _make_overlay_funcs(
     "IN_USE",
     to_val=lambda b: 0 if b else 1,

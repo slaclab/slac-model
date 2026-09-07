@@ -83,3 +83,17 @@ Crab_Cavity:
   PFBST: DummyEnumVariable
   RF_ENABLE: DummyEnumVariable
   REFPOC: CavityPREQVariable
+
+# Screen variables need extra per-element geometry (shape, pixel_size), supplied
+# via build_model's `screen_config` argument, keyed by element name.
+Screen:
+  Image:ArrayData: ScreenImageVariable
+  RESOLUTION: ScreenResolutionVariable
+  Image:ArraySize0_RBV:
+    variable_class: ScreenImageArraySizeVariable
+    index: 1
+  Image:ArraySize1_RBV:
+    variable_class: ScreenImageArraySizeVariable
+    index: 0
+  X: ScreenXVariable
+  Y: ScreenYVariable
