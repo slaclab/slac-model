@@ -31,7 +31,7 @@ def _resolve_backend(simulator: Any):
     )
 
 
-def build_model(
+def build_actions(
     simulator: Any,
     variable_config: dict[str, dict[str, Union[str, dict[str, Any]]]],
     screen_config: Optional[dict[str, dict[str, Any]]] = None,

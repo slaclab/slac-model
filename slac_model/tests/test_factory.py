@@ -8,7 +8,7 @@ from cheetah.accelerator import BPM, Drift, Quadrupole, Screen, Segment
 from cheetah.particles import ParticleBeam
 from lume_cheetah.simulator import CheetahSimulator
 
-from slac_model.virtual_accelerator.factory import build_model
+from slac_model.virtual_accelerator.factory import build_actions
 
 
 @pytest.fixture
@@ -38,7 +38,7 @@ def test_build_model_scalar_variables(cheetah_simulator):
         "BPM": {"X": "BPMXVariable", "Y": "BPMYVariable"},
     }
 
-    variables = build_model(cheetah_simulator, variable_config)
+    variables = build_actions(cheetah_simulator, variable_config)
 
     names = {v.name for v in variables}
     assert names == {"Q1:BCTRL", "Q1:BACT", "BPM1:X", "BPM1:Y"}
@@ -62,7 +62,7 @@ def test_build_model_screen_variables(cheetah_simulator):
     }
     screen_config = {"OTR1": {"shape": (4, 4), "pixel_size": 1e-5}}
 
-    variables = build_model(cheetah_simulator, variable_config, screen_config)
+    variables = build_actions(cheetah_simulator, variable_config, screen_config)
     by_name = {v.name: v for v in variables}
 
     assert by_name["OTR1:Image:ArrayData"]._get(cheetah_simulator).shape == (4, 4)
@@ -72,9 +72,9 @@ def test_build_model_screen_variables(cheetah_simulator):
 
 def test_build_model_unknown_class_raises(cheetah_simulator):
     with pytest.raises(ValueError, match="Unknown variable class"):
-        build_model(cheetah_simulator, {"Quadrupole": {"BCTRL": "NotARealClass"}})
+        build_actions(cheetah_simulator, {"Quadrupole": {"BCTRL": "NotARealClass"}})
 
 
 def test_build_model_unsupported_simulator_raises():
     with pytest.raises(TypeError, match="Unsupported simulator type"):
-        build_model(object(), {})
+        build_actions(object(), {})
