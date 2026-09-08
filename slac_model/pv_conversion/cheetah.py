@@ -1,3 +1,6 @@
+from functools import wraps
+
+
 def get_magnetic_rigidity(energy: float) -> float:
 	"""Calculate magnetic rigidity in kG-m for beam energy in eV."""
 	return 33.356 * energy / 1e9
@@ -5,6 +8,18 @@ def get_magnetic_rigidity(energy: float) -> float:
 
 def _get_element(simulator, element_name: str):
 	return getattr(simulator.segment, element_name)
+
+
+def validate_element(element_type: str):
+	def decorator(func):
+		@wraps(func)
+		def wrapper(simulator, element_name: str, *args, **kwargs):
+			actual_type = type(_get_element(simulator, element_name)).__name__
+			if actual_type.lower() != element_type.lower():
+				raise ValueError(f"Element {element_name} is not of type {element_type}")
+			return func(simulator, element_name, *args, **kwargs)
+		return wrapper
+	return decorator
 
 
 def _get_energy(simulator, element_name: str) -> float:
@@ -21,6 +36,7 @@ def _set_magnet_value(simulator, element_name: str, attribute_name: str, value: 
 	setattr(element, attribute_name, value / get_magnetic_rigidity(_get_energy(simulator, element_name)))
 
 
+@validate_element(element_type="quadrupole")
 def get_quadrupole_bctrl(simulator, element_name: str) -> float:
 	element = _get_element(simulator, element_name)
 	return (
@@ -30,6 +46,7 @@ def get_quadrupole_bctrl(simulator, element_name: str) -> float:
 	)
 
 
+@validate_element(element_type="quadrupole")
 def set_quadrupole_bctrl(simulator, element_name: str, value: float):
 	element = _get_element(simulator, element_name)
 	element.k1 = value / get_magnetic_rigidity(_get_energy(simulator, element_name)) / element.length
