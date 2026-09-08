@@ -1,3 +1,5 @@
+"""Bmad (pytao `Tao`) accessor functions for reading/writing element PV-equivalent values."""
+
 from functools import partial, wraps
 from typing import Any, Callable, Optional
 

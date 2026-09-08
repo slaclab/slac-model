@@ -1,3 +1,5 @@
+"""Cheetah (`CheetahSimulator`) accessor functions for reading/writing element PV-equivalent values."""
+
 from functools import wraps
 
 

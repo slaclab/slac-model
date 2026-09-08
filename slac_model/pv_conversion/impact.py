@@ -1,3 +1,5 @@
+"""Impact accessor functions for reading/writing element PV-equivalent values."""
+
 from functools import wraps
 
 from impact import Impact
