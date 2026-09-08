@@ -54,11 +54,12 @@ def set_quadrupole_bctrl(simulator, element_name: str, value: float):
 
 get_quadrupole_bact = get_quadrupole_bctrl
 
-
+@validate_element(element_type="solenoid")
 def get_solenoid_bctrl(simulator, element_name: str) -> float:
 	return _get_magnet_value(simulator, element_name, "k")
 
 
+@validate_element(element_type="solenoid")
 def set_solenoid_bctrl(simulator, element_name: str, value: float):
 	_set_magnet_value(simulator, element_name, "k", value)
 
@@ -66,6 +67,7 @@ def set_solenoid_bctrl(simulator, element_name: str, value: float):
 get_solenoid_bact = get_solenoid_bctrl
 
 
+@validate_element(element_type="dipole")
 def get_sbend_bctrl(simulator, element_name: str) -> float:
 	element = _get_element(simulator, element_name)
 	if not all(hasattr(element, attr) for attr in ("g", "dg", "p0c")):
@@ -75,6 +77,7 @@ def get_sbend_bctrl(simulator, element_name: str) -> float:
 	return element.p0c * (1 + element.dg / element.g) * 1e-9
 
 
+@validate_element(element_type="dipole")
 def set_sbend_bctrl(simulator, element_name: str, value: float):
 	element = _get_element(simulator, element_name)
 	if not all(hasattr(element, attr) for attr in ("g", "p0c")):
@@ -96,10 +99,12 @@ def set_kicker_bctrl(simulator, element_name: str, value: float):
 get_kicker_bact = get_kicker_bctrl
 
 
+@validate_element(element_type="bpm")
 def get_bpm_x(simulator, element_name: str) -> float:
 	return _get_element(simulator, element_name).reading[0]
 
 
+@validate_element(element_type="bpm")
 def get_bpm_y(simulator, element_name: str) -> float:
 	return _get_element(simulator, element_name).reading[1]
 
@@ -125,7 +130,7 @@ def set_cavity_preq(simulator, element_name: str, value: float):
 
 get_cavity_preq_readback = get_cavity_preq
 
-
+@validate_element(element_type="screen")
 def get_screen_image(simulator, element_name: str, shape=None, pixel_size=None):
 	# shape/pixel_size are accepted for backend-signature parity but unused: Cheetah screens carry their own geometry.
 	return _get_element(simulator, element_name).reading.mT * 65535

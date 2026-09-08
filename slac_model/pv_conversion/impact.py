@@ -30,6 +30,7 @@ def get_quadrupole_bctrl(simulator: Impact, element_name: str) -> float:
 get_quadrupole_bact = get_quadrupole_bctrl
 
 
+@validate_element(element_type="write_beam")
 def get_screen_image(simulator: Impact, element_name: str, shape, pixel_size):
     """Histogram the tracked beam at `element_name` into a `shape`-sized image, normalized to unit scale."""
     beam = simulator.particles[element_name]
