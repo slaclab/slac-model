@@ -69,27 +69,6 @@ def set_solenoid_bctrl(simulator, element_name: str, value: float):
 get_solenoid_bact = get_solenoid_bctrl
 
 
-@validate_element(element_type="dipole")
-def get_sbend_bctrl(simulator, element_name: str) -> float:
-	element = _get_element(simulator, element_name)
-	if not all(hasattr(element, attr) for attr in ("g", "dg", "p0c")):
-		raise ValueError(f"Element {element_name!r} does not expose sbend field attributes")
-	if element.g == 0:
-		return 0.0
-	return element.p0c * (1 + element.dg / element.g) * 1e-9
-
-
-@validate_element(element_type="dipole")
-def set_sbend_bctrl(simulator, element_name: str, value: float):
-	element = _get_element(simulator, element_name)
-	if not all(hasattr(element, attr) for attr in ("g", "p0c")):
-		raise ValueError(f"Element {element_name!r} does not expose sbend field attributes")
-	element.dg = ((value * 1e9 - element.p0c) / element.p0c) * element.g
-
-
-get_sbend_bact = get_sbend_bctrl
-
-
 def get_kicker_bctrl(simulator, element_name: str) -> float:
 	return _get_magnet_value(simulator, element_name, "angle")
 
@@ -111,10 +90,11 @@ def get_bpm_y(simulator, element_name: str) -> float:
 	return _get_element(simulator, element_name).reading[1].item() * 1e3
 
 
+@validate_element(element_type="transversedeflectingcavity")
 def get_cavity_areq(simulator, element_name: str) -> float:
 	return _get_element(simulator, element_name).voltage / 1e6
 
-
+@validate_element(element_type="transversedeflectingcavity")
 def set_cavity_areq(simulator, element_name: str, value: float):
 	_get_element(simulator, element_name).voltage = value * 1e6
 
