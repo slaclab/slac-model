@@ -1,0 +1,33 @@
+!-----------------------------------------
+! test_lattice.bmad
+! Minimal lattice covering slac_model.pv_conversion.bmad element types
+!-----------------------------------------
+
+beginning[e_tot] = 100e6
+parameter[geometry] = open
+parameter[particle] = electron
+
+BEGINNING[BETA_A]  = 10
+BEGINNING[ALPHA_A] = 0
+BEGINNING[BETA_B]  = 10
+BEGINNING[ALPHA_B] = 0
+
+d: drift, l = 0.5
+
+qf: quadrupole, l = 0.25, k1 = 1.2, type = "quadrupole"
+sol1: solenoid, l = 0.2, ks = 0.05, type = "solenoid"
+kick1: kicker, l = 0.1, hkick = 0.001, vkick = 0.0005, type = "kicker"
+bnd1: sbend, l = 0.5, g = 0.01, dg = 0, type = "sbend"
+bpm1: instrument, l = 0, type = "bpm"
+cav1: lcavity, l = 1.0, rf_frequency = 2.856e9, type = "lcavity"
+otr1: instrument, l = 0, type = "screen"
+
+klys_ovl: overlay = {cav1[voltage]: enld_mev, cav1[phi0]: phase_deg / 360},
+  var = {enld_mev, phase_deg, in_use}, type = "overlay"
+
+lat: line = (qf, d, sol1, d, kick1, d, bnd1, d, bpm1, d, cav1, d, otr1)
+
+use, lat
+
+klys_ovl[enld_mev] = 1e6
+klys_ovl[phase_deg] = 36
