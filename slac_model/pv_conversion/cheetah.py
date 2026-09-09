@@ -103,12 +103,12 @@ get_kicker_bact = get_kicker_bctrl
 
 @validate_element(element_type="bpm")
 def get_bpm_x(simulator, element_name: str) -> float:
-	return _get_element(simulator, element_name).reading[0]
+	return _get_element(simulator, element_name).reading[0].item() * 1e3
 
 
 @validate_element(element_type="bpm")
 def get_bpm_y(simulator, element_name: str) -> float:
-	return _get_element(simulator, element_name).reading[1]
+	return _get_element(simulator, element_name).reading[1].item() * 1e3
 
 
 def get_cavity_areq(simulator, element_name: str) -> float:
@@ -121,11 +121,12 @@ def set_cavity_areq(simulator, element_name: str, value: float):
 
 get_cavity_areq_readback = get_cavity_areq
 
-
+# cavity phase in degrees --> rad / 2pi
+@validate_element(element_type="transversedeflectingcavity")
 def get_cavity_preq(simulator, element_name: str) -> float:
 	return _get_element(simulator, element_name).phase * 360.0
 
-
+@validate_element(element_type="transversedeflectingcavity")
 def set_cavity_preq(simulator, element_name: str, value: float):
 	_get_element(simulator, element_name).phase = value / 360.0
 

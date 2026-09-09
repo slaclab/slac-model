@@ -205,8 +205,8 @@ def _make_scaled_element_funcs(attribute_name: str, scale_factor: float):
 
     return get_func, set_func
 
-
-get_cavity_areq, set_cavity_areq = _make_scaled_element_funcs("VOLTAGE", 1e6)
+# cavity PV is in MV
+get_cavity_areq, set_cavity_areq = _make_scaled_element_funcs("VOLTAGE", 1e-6)
 get_cavity_preq, set_cavity_preq = _make_scaled_element_funcs("PHI0", 1 / 360.0)
 get_cavity_areq_readback = get_cavity_areq
 get_cavity_preq_readback = get_cavity_preq
