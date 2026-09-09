@@ -2,6 +2,8 @@
 
 from functools import wraps
 
+import torch
+
 
 def get_magnetic_rigidity(energy: float) -> float:
 	"""Calculate magnetic rigidity in kG-m for beam energy in eV."""
@@ -96,7 +98,8 @@ def get_cavity_areq(simulator, element_name: str) -> float:
 
 @validate_element(element_type="transversedeflectingcavity")
 def set_cavity_areq(simulator, element_name: str, value: float):
-	_get_element(simulator, element_name).voltage = value * 1e6
+	# torch buffers reject plain floats, so the assigned value must stay a tensor.
+	_get_element(simulator, element_name).voltage = torch.tensor(value * 1e6)
 
 
 get_cavity_areq_readback = get_cavity_areq
@@ -108,7 +111,8 @@ def get_cavity_preq(simulator, element_name: str) -> float:
 
 @validate_element(element_type="transversedeflectingcavity")
 def set_cavity_preq(simulator, element_name: str, value: float):
-	_get_element(simulator, element_name).phase = value / 360.0
+	# torch buffers reject plain floats, so the assigned value must stay a tensor.
+	_get_element(simulator, element_name).phase = torch.tensor(value / 360.0)
 
 
 get_cavity_preq_readback = get_cavity_preq

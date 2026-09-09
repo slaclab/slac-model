@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "slac-model"
+version = "0.1.0"
+description = "Repository for slac-tools related accelerator model code."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "SLAC National Accelerator Laboratory"}
+]
+
+[project.optional-dependencies]
+cheetah = ["cheetah-accelerator", "lume-cheetah", "torch"]
+bmad = ["pytao", "lume-bmad"]
+impact = ["lume-impact", "distgen"]
+test = ["pytest"]
+
+[project.urls]
+Homepage = "https://github.com/slaclab/slac-model"
+Repository = "https://github.com/slaclab/slac-model"
+
+[tool.setuptools.packages.find]
+include = ["slac_model*"]
+
+[tool.pytest.ini_options]
+testpaths = ["slac_model/tests"]
