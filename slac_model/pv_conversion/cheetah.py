@@ -1,12 +1,7 @@
 """Cheetah (`CheetahSimulator`) accessor functions for reading/writing element PV-equivalent values."""
 
 from functools import wraps
-
-
-def get_magnetic_rigidity(energy: float) -> float:
-	"""Calculate magnetic rigidity in kG-m for beam energy in eV."""
-	return 33.356 * energy / 1e9
-
+from slac_model.pv_conversion.utils import get_magnetic_rigidity
 
 def _get_element(simulator, element_name: str):
 	return getattr(simulator.segment, element_name)
