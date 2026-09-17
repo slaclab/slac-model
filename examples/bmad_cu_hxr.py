@@ -8,7 +8,7 @@ tao = Tao(INIT)
 tao.cmd('set ele BEGINNING:END field_master=True')
 
 
-elements = model_tooks.get_modeled_elements(beampath='CU_HXR')
+elements = model_tools.get_modeled_elements(beampath='CU_HXR')
 pvs = model_tools.get_model_pvs(elements, beam_path='CU_HXR')
 pv_data = model_tools.get_pv_data(pvs)
 
