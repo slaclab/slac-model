@@ -1,3 +1,11 @@
+"""Build lume-bmad `Variable` instances for Bmad lattice elements.
+
+Classifies elements from a Tao instance into normalized types (e.g. BPM,
+Quadrupole, Klystron, Screen), maps each to the appropriate variable classes
+from `slac_model.virtual_accelerator.actions` via `ELEMENT_ATTR_MAPPING`, and
+assembles the resulting list of variables used to build a virtual accelerator.
+"""
+
 from typing import Any
 from pytao import Tao
 from pytao.model import ElementNotFoundError
@@ -17,8 +25,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Pre-compile regex patterns for performance
-KLYSTRON_SEGMENT_PATTERN = re.compile(r"^(K\d+_\d+)[A-Z]$")
+# Pre-compile regex pattern for performance
 KLYSTRON_PATTERN = re.compile(r"^K\d{2}_\d[A-Z]#?$")
 
 # Mapping of element types to canonical types for variable configuration
@@ -39,42 +46,6 @@ SKIPPED_TYPES = [
     "ECollimator",
     "Patch",
 ]
-
-
-def set_overlay_aliases(tao: Tao):
-    """Propagate aliases from segmented klystron elements to overlay elements.
-
-    Parameters
-    ----------
-    tao : Tao
-        Active Tao instance containing the currently loaded lattice.
-
-    Notes
-    -----
-    Elements matching the klystron segment pattern (for example ``K21_1C#1``)
-    are normalized to their overlay root (for example ``K21_1``), and the
-    overlay alias is set to match the segment alias.
-    """
-    elements = tao.lat_list("*", "ele.name")
-
-    elements = list(
-        dict.fromkeys(elem for elem in elements if elem not in ("BEGINNING", "END"))
-    )
-
-    # if an element matches the klystron segment pattern similar to K21_1D#1, normalize it to the base klystron name without the segment suffix K21_1
-    for elem in elements:
-        match = KLYSTRON_PATTERN.match(
-            elem.split("#")[0]
-        )  # ignore any alias suffixes for matching
-        if match:
-            overlay_element = elem[:-3]
-
-            # set the klystron overlay element alias to match the element alias
-            alias = tao.ele(elem).head.alias
-            logging.debug(
-                f"Setting alias for klystron overlay element {overlay_element} to {alias}"
-            )
-            tao.ele(overlay_element).head.alias = alias
 
 
 def get_overlay_alias(tao: Tao, element_name: str) -> str:

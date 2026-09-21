@@ -1,3 +1,10 @@
+"""Build Tao and lume-bmad virtual accelerator instances for the CU_HXR lattice.
+
+Provides `get_cu_hxr_bmad_model` to construct a sliced Tao instance for a
+lattice segment, and `get_cu_hxr_bmad_va` to wrap it in a `LUMEBmadModel`
+virtual accelerator with variables and screen dump locations configured.
+"""
+
 import os
 from pytao import Tao
 from lume_bmad.model import LUMEBmadModel

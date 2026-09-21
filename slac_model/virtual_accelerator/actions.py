@@ -1,3 +1,11 @@
+"""lume-bmad `Variable` subclasses for CU virtual accelerator elements.
+
+Each class wires a PV-facing variable (quadrupoles, solenoids, bends,
+correctors, BPMs, klystrons, cavities, and related status/limit fields) to
+the corresponding getter/setter in `slac_model.pv_conversion.bmad`, using a
+Tao instance as the simulator backend.
+"""
+
 from typing import Any
 
 from lume.actions import ReadOnlyActionMixin, WritableActionMixin
