@@ -45,6 +45,7 @@ SKIPPED_TYPES = [
     "Monitor",
     "ECollimator",
     "Patch",
+    "Screen",
 ]
 
 
@@ -145,14 +146,6 @@ def get_element_type(tao: Tao, element_name: str) -> str:
     if element_type == "Monitor" and element_name.startswith("BPM"):
         element_type = "BPM"
 
-    # handle screens
-    if element_type == "Monitor" and (
-        element_name.startswith("OTR")
-        or element_name.startswith("PR")
-        or element_name.startswith("YAG")
-    ):
-        element_type = "Screen"
-
     # handle klystrons
     if element_type == "Overlay" and element_name.startswith("K"):
         element_type = "Klystron"
@@ -181,7 +174,6 @@ def get_all_element_types(tao: Tao) -> dict[str, str]:
 
 def get_variables(
     tao: Tao,
-    screen_config_dict: dict[str, dict[str, Any]],
 ):
     """
     Build variables for supported lattice elements.
@@ -230,20 +222,6 @@ def get_variables(
 
         # skip element types that are in the SKIPPED_TYPES list
         if element_type in SKIPPED_TYPES:
-            continue
-
-        # if the element is a screen, add screen variables based on the screen configuration
-        if element_type == "Screen":
-            if element_name not in screen_config_dict:
-                logger.warning(
-                    f"Screen {element_name} found in lattice but missing from screen configuration. Skipping screen variables for this element."
-                )
-                continue
-
-            screen_variables = get_screen_variables(
-                tao, element_name, screen_config_dict
-            )
-            all_variables.extend(screen_variables)
             continue
 
         # check if element type is in the variable configuration mapping, if not skip it with a warning
@@ -304,83 +282,5 @@ def create_variables_from_element(
 
         variable = var_class(name=pv_name, element_name=element_name)
         variables.append(variable)
-
-    return variables
-
-
-def get_screen_variables(
-    tao: Tao,
-    screen_name: str,
-    config_dict: dict[str, dict[str, Any]],
-):
-    """
-    Build screen image-related variables from screen configuration.
-
-    Parameters
-    ----------
-    tao : Tao
-        Active Tao instance containing the currently loaded lattice.
-    screen_name : str
-        Screen element name to build variables for.
-    config_dict : dict[str, dict[str, Any]]
-        Mapping of screen name -> configuration with ``shape`` and
-        ``pixel_size``.
-
-    Returns
-    -------
-    list[Variable]
-        Screen variables including image array data, resolution, and array
-        dimensions.
-
-    Raises
-    ------
-    ValueError
-        If ``screen_name`` is missing from ``config_dict``.
-
-    """
-
-    base_pv = tao.ele(screen_name).head.alias
-    if screen_name not in config_dict:
-        raise ValueError(f"Screen {screen_name} not found in configuration dictionary.")
-
-    screen_config = config_dict[screen_name]
-
-    shape = screen_config["shape"]
-    pixel_size = screen_config["pixel_size"]
-
-    screen_spec = ScreenSpec(
-        element_name=screen_name,
-        shape=tuple(shape),
-        pixel_size=float(pixel_size),
-    )
-
-    # create screen variables based on the configuration for this screen
-    image_screen_spec = ScreenSpec(
-        element_name=screen_name,
-        shape=tuple(shape),
-        pixel_size=float(pixel_size) * 1e-6,  # convert from microns to meters
-    )
-    variables = [
-        ScreenImageVariable.from_screen_spec(
-            name=f"{base_pv}:Image:ArrayData",
-            screen_spec=image_screen_spec,
-        ),
-        ScreenResolutionVariable.from_screen_spec(
-            name=f"{base_pv}:RESOLUTION",
-            screen_spec=screen_spec,
-        ),
-        ScreenImageShapeVariable.from_screen_spec(
-            name=f"{base_pv}:Image:ArraySize0_RBV",
-            screen_spec=screen_spec,
-            index=1,  # need to reverse the order of the shape for the ArraySize0_RBV and ArraySize1_RBV variables since they are in row-major order
-        ),
-        ScreenImageShapeVariable.from_screen_spec(
-            name=f"{base_pv}:Image:ArraySize1_RBV",
-            screen_spec=screen_spec,
-            index=0,  # need to reverse the order of the shape for the ArraySize0_RBV and ArraySize1_RBV variables since they are in row-major order
-        ),
-        actions.BPMXVariable(name=f"{base_pv}:X", element_name=screen_name),
-        actions.BPMYVariable(name=f"{base_pv}:Y", element_name=screen_name),
-    ]
 
     return variables
