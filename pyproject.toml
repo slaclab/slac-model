@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "slac-model"
+description = "Repository for slac-tools related accelerator model code."
+readme = "README.md"
+requires-python = ">=3.10"
+dynamic = ["version"]
+dependencies = [
+    "numpy",
+    "openpmd-beamphysics",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+bmad = ["pytao", "lume-bmad"]
+impact = ["lume-impact"]
+cheetah = ["cheetah-accelerator"]
+all = ["pytao", "lume-bmad", "lume-impact", "cheetah-accelerator"]
+
+[tool.setuptools.packages.find]
+include = ["slac_model*"]
+
+[tool.setuptools_scm]
