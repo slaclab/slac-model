@@ -14,7 +14,7 @@ def validate_element(element_type: str):
         @wraps(func)
         def wrapper(simulator: Tao, element_name: str, *args, **kwargs):
             # the "type" string label lives on the element head
-            element_label = simulator.ele(element_name).head.type
+            element_label = simulator.ele(element_name).head.key
             if element_label.lower() != element_type.lower():
                 raise ValueError(f"Element {element_name} is not of type {element_type}")
             return func(simulator, element_name, *args, **kwargs)
@@ -127,17 +127,17 @@ get_solenoid_bctrl, set_solenoid_bctrl = _make_element_attribute_funcs(
 get_solenoid_bact = get_solenoid_bctrl
 
 get_hkicker_bctrl, set_hkicker_bctrl = _make_element_attribute_funcs(
-    element_type="kicker",
-    field_attr="BL_HKICK",
-    to_pv=lambda attrs: -attrs["BL_HKICK"] * 10,
+    element_type="hkicker",
+    field_attr="BL_KICK",
+    to_pv=lambda attrs: -attrs["BL_KICK"] * 10,
     from_pv=lambda attrs, value: -value / 10,
 )
 get_hkicker_bact = get_hkicker_bctrl
 
 get_vkicker_bctrl, set_vkicker_bctrl = _make_element_attribute_funcs(
-    element_type="kicker",
-    field_attr="BL_VKICK",
-    to_pv=lambda attrs: -attrs["BL_VKICK"] * 10,
+    element_type="vkicker",
+    field_attr="BL_KICK",
+    to_pv=lambda attrs: -attrs["BL_KICK"] * 10,
     from_pv=lambda attrs, value: -value / 10,
 )
 get_vkicker_bact = get_vkicker_bctrl

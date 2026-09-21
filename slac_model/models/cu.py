@@ -35,7 +35,7 @@ def get_cu_hxr_bmad_va(
     end_element="END", 
 ):
     """
-    Get the LUMEBmadModel for the CU_HXR lattice from `start_element` to `end_element`.
+    Get the LUMEBmadModel virtual accelerator for the CU_HXR lattice from `start_element` to `end_element`.
 
     Parameters
     -------------

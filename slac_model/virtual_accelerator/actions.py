@@ -82,18 +82,32 @@ class SBendBACTVariable(_ReadbackFromControlMixin, SBendBCTRLVariable):
     """Action that operates on the BACT property of SBends"""
 
 
-class KickerBCTRLVariable(BmadScalarVariable, WritableActionMixin):
-    """Action that operates on the BCTRL/BDES property of Kicker magnets"""
+class HKickerBCTRLVariable(BmadScalarVariable, WritableActionMixin):
+    """Action that operates on the BCTRL/BDES property of Horizontal Kicker magnets"""
 
     def _get(self, simulator: Tao) -> Any:
-        return bmad.get_kicker_bctrl(simulator, self.element_name)
+        return bmad.get_hkicker_bctrl(simulator, self.element_name)
 
     def _set(self, simulator: Tao, value: Any) -> None:
-        bmad.set_kicker_bctrl(simulator, self.element_name, value)
+        bmad.set_hkicker_bctrl(simulator, self.element_name, value)
 
 
-class KickerBACTVariable(_ReadbackFromControlMixin, KickerBCTRLVariable):
-    """Action that operates on the BACT property of Kicker magnets"""
+class HKickerBACTVariable(_ReadbackFromControlMixin, HKickerBCTRLVariable):
+    """Action that operates on the BACT property of Horizontal Kicker magnets"""
+
+
+class VKickerBCTRLVariable(BmadScalarVariable, WritableActionMixin):
+    """Action that operates on the BCTRL/BDES property of Vertical Kicker magnets"""
+
+    def _get(self, simulator: Tao) -> Any:
+        return bmad.get_vkicker_bctrl(simulator, self.element_name)
+
+    def _set(self, simulator: Tao, value: Any) -> None:
+        bmad.set_vkicker_bctrl(simulator, self.element_name, value)
+
+
+class VKickerBACTVariable(_ReadbackFromControlMixin, VKickerBCTRLVariable):
+    """Action that operates on the BACT property of Vertical Kicker magnets"""
 
 
 class StatusVariable(BmadScalarVariable, ReadOnlyActionMixin):

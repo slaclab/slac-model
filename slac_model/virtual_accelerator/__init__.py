@@ -47,11 +47,11 @@ ELEMENT_ATTR_MAPPING= {
 },
     "HorizontalCorrector":
         {
-            "BCTRL": va_actions.KickerBCTRLVariable,
+            "BCTRL": va_actions.HKickerBCTRLVariable,
             "BCTRL.DRVL": va_actions.BminVariable,
             "BCTRL.DRVH": va_actions.BmaxVariable,
-            "BACT": va_actions.KickerBACTVariable,
-            "BDES": va_actions.KickerBCTRLVariable,
+            "BACT": va_actions.HKickerBACTVariable,
+            "BDES": va_actions.HKickerBCTRLVariable,
             "BMIN": va_actions.BminVariable,
             "BMAX": va_actions.BmaxVariable,
             "STATCTRLSUB.T": va_actions.StatusVariable,
@@ -60,11 +60,11 @@ ELEMENT_ATTR_MAPPING= {
 
     "VerticalCorrector":
         {
-            "BCTRL": va_actions.KickerBCTRLVariable,
+            "BCTRL": va_actions.VKickerBCTRLVariable,
             "BCTRL.DRVL": va_actions.BminVariable,
             "BCTRL.DRVH": va_actions.BmaxVariable,
-            "BACT": va_actions.KickerBACTVariable,
-            "BDES": va_actions.KickerBCTRLVariable,
+            "BACT": va_actions.VKickerBACTVariable,
+            "BDES": va_actions.VKickerBCTRLVariable,
             "BMIN": va_actions.BminVariable,
             "BMAX": va_actions.BmaxVariable,
             "STATCTRLSUB.T": va_actions.StatusVariable,
