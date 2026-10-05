@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "slac-model"
 description = "Repository for slac-tools related accelerator model code."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dynamic = ["version"]
 dependencies = [
     "numpy",
