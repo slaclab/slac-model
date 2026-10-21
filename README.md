@@ -80,13 +80,4 @@ va = get_cu_hxr_bmad_va(start_element="OTR2", end_element="END")
 
 ## Running tests
 
-From the repository root, with the desired backends and the `dev` extra
-installed:
-
-```bash
-python -m pytest slac_model/tests
-```
-
-The Bmad tests use a bundled test lattice and do not require `LCLS_LATTICE`.
-Backend tests may be skipped when their optional Python dependencies are not
-installed; use the `all,dev` installation above for all backends.
+This repository does not currently include an automated test suite.
