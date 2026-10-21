@@ -17,13 +17,13 @@ LATTICE_INIT = os.path.join(
 
 @pytest.fixture
 def simulator():
-    return Tao(init_file=LATTICE_INIT, noplot=True)
+    return Tao(f'-init "{LATTICE_INIT}" -noplot')
 
 
 def test_get_set_element_attribute(simulator):
-    assert bmad_cnv.get_element_attribute(simulator, "QF", "K1") == pytest.approx(1.2)
-    bmad_cnv.set_element_attribute(simulator, "QF", "K1", 2.0)
-    assert bmad_cnv.get_element_attribute(simulator, "QF", "K1") == pytest.approx(2.0)
+    assert bmad_cnv.get_element_attribute(simulator, "qf", "k1") == pytest.approx(1.2)
+    bmad_cnv.set_element_attribute(simulator, "qf", "k1", 2.0)
+    assert bmad_cnv.get_element_attribute(simulator, "qf", "k1") == pytest.approx(2.0)
 
 
 def test_validate_element_raises_for_wrong_type(simulator):
