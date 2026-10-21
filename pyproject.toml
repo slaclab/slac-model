@@ -18,7 +18,7 @@ cheetah = ["cheetah-accelerator", "lume-cheetah", "torch"]
 bmad = ["pytao", "lume-bmad"]
 impact = [
     "lume-impact", 
-    "distgen" @ git+https://github.com/ColwynGulliford/distgen
+    "distgen @ git+https://github.com/ColwynGulliford/distgen"
 ]
 all = [
     "cheetah-accelerator", 
@@ -27,7 +27,7 @@ all = [
     "pytao", 
     "lume-bmad", 
     "lume-impact", 
-    "distgen" @ git+https://github.com/ColwynGulliford/distgen, 
+    "distgen @ git+https://github.com/ColwynGulliford/distgen", 
     "pytest"
 ]
 test = ["pytest"]
