@@ -16,14 +16,26 @@ LATTICE_INIT = os.path.join(
 
 
 @pytest.fixture
-def simulator():
-    return Tao(f'-init "{LATTICE_INIT}" -noplot')
+def simulator(monkeypatch):
+    # Tao's command parser does not support paths containing spaces.
+    monkeypatch.chdir(os.path.dirname(LATTICE_INIT))
+    return Tao(init_file=os.path.basename(LATTICE_INIT), noplot=True)
 
 
-def test_get_set_element_attribute(simulator):
-    assert bmad_cnv.get_element_attribute(simulator, "qf", "k1") == pytest.approx(1.2)
-    bmad_cnv.set_element_attribute(simulator, "qf", "k1", 2.0)
-    assert bmad_cnv.get_element_attribute(simulator, "qf", "k1") == pytest.approx(2.0)
+@pytest.mark.parametrize("attribute_name", ["k1", "K1"])
+def test_get_set_element_attribute(simulator, attribute_name):
+    assert bmad_cnv.get_element_attribute(simulator, "qf", attribute_name) == pytest.approx(1.2)
+    bmad_cnv.set_element_attribute(simulator, "qf", attribute_name, 2.0)
+    assert bmad_cnv.get_element_attribute(simulator, "qf", attribute_name) == pytest.approx(2.0)
+
+
+def test_get_element_metadata_attribute(simulator):
+    assert bmad_cnv.get_element_attribute(simulator, "QF", "field_master") is False
+
+
+def test_get_unknown_element_attribute_raises(simulator):
+    with pytest.raises(KeyError):
+        bmad_cnv.get_element_attribute(simulator, "QF", "unknown_attribute")
 
 
 def test_validate_element_raises_for_wrong_type(simulator):
@@ -76,25 +88,25 @@ class TestSolenoid:
 
 class TestKicker:
     def test_get_hkicker_bctrl(self, simulator):
-        bl_hkick = bmad_cnv.get_element_attribute(simulator, "KICK1", "BL_HKICK")
+        bl_hkick = bmad_cnv.get_element_attribute(simulator, "KICKH", "BL_KICK")
         expected = -bl_hkick * 10
-        assert bmad_cnv.get_hkicker_bctrl(simulator, "KICK1") == pytest.approx(expected)
+        assert bmad_cnv.get_hkicker_bctrl(simulator, "KICKH") == pytest.approx(expected)
 
     def test_set_get_hkicker_roundtrip(self, simulator):
-        bmad_cnv.set_hkicker_bctrl(simulator, "KICK1", 0.05)
-        assert bmad_cnv.get_hkicker_bctrl(simulator, "KICK1") == pytest.approx(0.05)
+        bmad_cnv.set_hkicker_bctrl(simulator, "KICKH", 0.05)
+        assert bmad_cnv.get_hkicker_bctrl(simulator, "KICKH") == pytest.approx(0.05)
 
     def test_hkicker_bact_is_bctrl_alias(self):
         assert bmad_cnv.get_hkicker_bact is bmad_cnv.get_hkicker_bctrl
 
     def test_get_vkicker_bctrl(self, simulator):
-        bl_vkick = bmad_cnv.get_element_attribute(simulator, "KICK1", "BL_VKICK")
+        bl_vkick = bmad_cnv.get_element_attribute(simulator, "KICKV", "BL_KICK")
         expected = -bl_vkick * 10
-        assert bmad_cnv.get_vkicker_bctrl(simulator, "KICK1") == pytest.approx(expected)
+        assert bmad_cnv.get_vkicker_bctrl(simulator, "KICKV") == pytest.approx(expected)
 
     def test_set_get_vkicker_roundtrip(self, simulator):
-        bmad_cnv.set_vkicker_bctrl(simulator, "KICK1", 0.02)
-        assert bmad_cnv.get_vkicker_bctrl(simulator, "KICK1") == pytest.approx(0.02)
+        bmad_cnv.set_vkicker_bctrl(simulator, "KICKV", 0.02)
+        assert bmad_cnv.get_vkicker_bctrl(simulator, "KICKV") == pytest.approx(0.02)
 
     def test_vkicker_bact_is_bctrl_alias(self):
         assert bmad_cnv.get_vkicker_bact is bmad_cnv.get_vkicker_bctrl

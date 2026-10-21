@@ -56,7 +56,9 @@ def get_element_attribute(simulator: Tao, element_name: str, attribute_name: str
     --------
     The value of the specified attribute.
     """
-    return simulator.ele_gen_attribs(element_name)[attribute_name]
+    attributes = simulator.ele_gen_attribs(element_name)
+    key = attribute_name if attribute_name in attributes else attribute_name.upper()
+    return attributes[key]
 
 @validate_element(element_type="overlay")
 def get_overlay_attribute(simulator: Tao, element_name: str, attribute_name: str):

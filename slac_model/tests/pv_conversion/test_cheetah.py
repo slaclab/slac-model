@@ -64,8 +64,8 @@ def simulator():
 
 
 def test_get_magnetic_rigidity():
-    assert math.isclose(cheetah_cnv.get_magnetic_rigidity(1e9), 33.356, rel_tol=1e-9)
-    assert math.isclose(cheetah_cnv.get_magnetic_rigidity(2e9), 66.712, rel_tol=1e-9)
+    assert math.isclose(cheetah_cnv.get_magnetic_rigidity(1e9), 1e10 / 299792458.0, rel_tol=1e-9)
+    assert math.isclose(cheetah_cnv.get_magnetic_rigidity(2e9), 2e10 / 299792458.0, rel_tol=1e-9)
 
 
 def test_validate_element_raises_for_wrong_type(simulator):
@@ -124,6 +124,23 @@ class TestBPM:
 
 
 class TestCavity:
+    @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+    @pytest.mark.parametrize(
+        "setter, attribute, value, expected",
+        [
+            (cheetah_cnv.set_cavity_areq, "voltage", 2.5, 2.5e6),
+            (cheetah_cnv.set_cavity_preq, "phase", 90.0, 0.25),
+        ],
+    )
+    def test_set_preserves_tensor_properties(self, simulator, dtype, setter, attribute, value, expected):
+        cavity = simulator.segment.TCAV1.to(dtype=dtype)
+        device = getattr(cavity, attribute).device
+        setter(simulator, "TCAV1", value)
+        result = getattr(cavity, attribute)
+        assert result.dtype == dtype
+        assert result.device == device
+        assert result.item() == pytest.approx(expected)
+
     def test_get_areq(self, simulator):
         assert cheetah_cnv.get_cavity_areq(simulator, "TCAV1") == pytest.approx(1.0)
 

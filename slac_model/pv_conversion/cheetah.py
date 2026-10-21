@@ -91,8 +91,8 @@ def get_cavity_areq(simulator, element_name: str) -> float:
 
 @validate_element(element_type="transversedeflectingcavity")
 def set_cavity_areq(simulator, element_name: str, value: float):
-	# torch buffers reject plain floats, so the assigned value must stay a tensor.
-	_get_element(simulator, element_name).voltage = torch.tensor(value * 1e6)
+	element = _get_element(simulator, element_name)
+	element.voltage = element.voltage.new_tensor(value * 1e6)
 
 
 get_cavity_areq_readback = get_cavity_areq
@@ -104,8 +104,8 @@ def get_cavity_preq(simulator, element_name: str) -> float:
 
 @validate_element(element_type="transversedeflectingcavity")
 def set_cavity_preq(simulator, element_name: str, value: float):
-	# torch buffers reject plain floats, so the assigned value must stay a tensor.
-	_get_element(simulator, element_name).phase = torch.tensor(value / 360.0)
+	element = _get_element(simulator, element_name)
+	element.phase = element.phase.new_tensor(value / 360.0)
 
 
 get_cavity_preq_readback = get_cavity_preq
