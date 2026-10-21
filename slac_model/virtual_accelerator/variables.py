@@ -1,0 +1,278 @@
+"""Build lume-bmad `Variable` instances for Bmad lattice elements.
+
+Classifies elements from a Tao instance into normalized types (e.g. BPM,
+Quadrupole, Klystron, Screen), maps each to the appropriate variable classes
+from `slac_model.virtual_accelerator.actions` via `ELEMENT_ATTR_MAPPING`, and
+assembles the resulting list of variables used to build a virtual accelerator.
+"""
+
+from typing import Any
+from pytao import Tao
+from pytao.model import ElementNotFoundError
+import re
+from lume.variables import Variable
+from slac_model.virtual_accelerator import ELEMENT_ATTR_MAPPING
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Pre-compile regex pattern for performance
+KLYSTRON_PATTERN = re.compile(r"^K\d{2}_\d[A-Z]#?$")
+
+# Mapping of element types to canonical types for variable configuration
+ELEMENT_TYPE_MAPPING = {
+    "VKicker": "VerticalCorrector",
+    "HKicker": "HorizontalCorrector",
+}
+
+SKIPPED_TYPES = [
+    "Drift", 
+    "Marker", 
+    "Instrument", 
+    "Fixer", 
+    "Unknown", 
+    "RCollimator", 
+    "Lcavity",
+    "Monitor",
+    "ECollimator",
+    "Patch",
+    "Screen",
+]
+
+
+def get_overlay_alias(tao: Tao, element_name: str) -> str:
+    """Return the alias for the first lattice element matching a substring.
+
+    Parameters
+    ----------
+    tao : Tao
+        Active Tao instance containing the currently loaded lattice.
+    element_name : str
+        Substring used to locate a matching element name.
+
+    Returns
+    -------
+    str
+        Alias of the first matching element, if found.
+    """
+    elements = tao.lat_list("*", "ele.name")
+
+    # find an element that contains the element_name as a substring
+    for elem in elements:
+        if element_name in elem:
+            return tao.ele(elem).head.alias
+
+
+def get_normalized_element_names(tao: Tao):
+    """Return lattice element names normalized for variable generation.
+
+    Parameters
+    ----------
+    tao : Tao
+        Active Tao instance containing the currently loaded lattice.
+
+    Returns
+    -------
+    list[str]
+        Ordered element names with sentinels removed, klystron segments
+        normalized to overlay roots, and duplicates removed.
+    """
+    elements = tao.lat_list("*", "ele.name")
+
+    # Remove sentinel elements and preserve Tao's unique element IDs to avoid
+    # ambiguous lookups when multiple elements share the same base name.
+    elements = list(
+        dict.fromkeys(elem for elem in elements if elem not in ("BEGINNING", "END"))
+    )
+
+    normalized_elements = []
+
+    # if an element has "#<number>" suffix then it is a split element, remove the suffix -- duplicates will be removed later while preserving order
+    elements = [elem.split("#")[0] for elem in elements]
+
+    # if an element matches the klystron segment pattern similar to K21_1D#1, normalize it to the base klystron name without the segment suffix K21_1
+    for elem in elements:
+        match = KLYSTRON_PATTERN.match(elem)
+        if match:
+            normalized_elements.append(
+                elem[:-1]
+            )  # remove the segment suffix to get the overlay element name
+
+        else:
+            normalized_elements.append(elem)
+
+    # remove duplicates while preserving order
+    normalized_elements = list(dict.fromkeys(normalized_elements))
+
+    return normalized_elements
+
+
+def get_element_type(tao: Tao, element_name: str) -> str:
+    """Get normalized device type for a lattice element.
+
+    Parameters
+    ----------
+    tao : Tao
+        Active Tao instance containing the currently loaded lattice.
+    element_name : str
+        Lattice element name to classify.
+
+    Returns
+    -------
+    str
+        Normalized element type key used for variable mapping.
+
+    Notes
+    -----
+    This helper applies BPM and klystron-specific remapping and then applies
+    canonical type aliases from ``ELEMENT_TYPE_MAPPING``.
+    """
+    try:
+        element_type = tao.ele_head(element_name)["key"]
+    except Exception as exc:
+        # Ignore errors and default to 'Unknown' element type.
+        return "Unknown"
+
+    # handle BPMs
+    if element_type == "Monitor" and element_name.startswith("BPM"):
+        element_type = "BPM"
+
+    # handle klystrons
+    if element_type == "Overlay" and element_name.startswith("K"):
+        element_type = "Klystron"
+
+    # Apply element type mappings
+    element_type = ELEMENT_TYPE_MAPPING.get(element_type, element_type)
+    return element_type
+
+
+def get_all_element_types(tao: Tao) -> dict[str, str]:
+    """Get a mapping of all lattice element names to their normalized types.
+
+    Parameters
+    ----------
+    tao : Tao
+        Active Tao instance containing the currently loaded lattice.
+
+    Returns
+    -------
+    dict[str, str]
+        Mapping of element name -> normalized element type.
+    """
+    elements = get_normalized_element_names(tao)
+    return {elem: get_element_type(tao, elem) for elem in elements}
+
+
+def get_variables(
+    tao: Tao,
+):
+    """
+    Build variables for supported lattice elements.
+
+    Parameters
+    ----------
+    tao : Tao
+        Active Tao instance containing the currently loaded lattice.
+    element_attr_mapping : dict[str, dict[str, dict[str, Any]]], optional
+        Mapping of element type -> PV suffix -> variable specification.
+        If omitted, callers are expected to pass a mapping upstream.
+    screen_config_dict : dict[str, dict[str, Any]], optional
+        Mapping of screen element name -> screen configuration with ``shape``
+        and ``pixel_size``.
+
+    Returns
+    -------
+    list[Variable]
+        Instantiated variables for all supported elements.
+
+    Notes
+    -----
+    Elements in ``SKIPPED_TYPES`` are ignored. Unknown element types are logged
+    and skipped.
+
+    """
+    all_variables = []
+
+    normalized_elements = get_normalized_element_names(tao)
+
+    # iterate over the normalized element names and create variables for those that are in the device mapping
+    for element_name in normalized_elements:
+        element_type = get_element_type(tao, element_name)
+
+        # get alias
+        if element_type == "Klystron":
+            alias = get_overlay_alias(tao, element_name)
+        else:
+            try:
+                alias = tao.ele(element_name).head.alias
+            except ElementNotFoundError:
+                logger.warning(
+                    f"Element {element_name} not found in Tao lattice. Skipping variable generation for this element."
+                )
+                continue
+
+        # skip element types that are in the SKIPPED_TYPES list
+        if element_type in SKIPPED_TYPES:
+            continue
+
+        # check if element type is in the variable configuration mapping, if not skip it with a warning
+        if element_type not in ELEMENT_ATTR_MAPPING:
+            # raise warning and skip if element type is not in the variable configuration mapping
+            logger.warning(
+                f"Element type {element_type} for element {element_name} not found in variable configuration mapping. Skipping."
+            )
+            continue
+
+        # get the element pv suffix mapping for this element type from the variable configuration
+        element_pv_suffix_mapping = ELEMENT_ATTR_MAPPING[element_type]
+
+        all_variables.extend(
+            create_variables_from_element(
+                element_name=element_name,
+                base_pv=alias,
+                class_mapping=element_pv_suffix_mapping,
+            )
+        )
+
+    return all_variables
+
+
+def create_variables_from_element(
+    element_name: str,
+    base_pv: str,
+    class_mapping: dict[str, Any],
+) -> list[Variable]:
+    """
+    Instantiate variables for one element from a PV-class mapping.
+
+    Parameters
+    ----------
+    element_name : str
+        Name of the element to create variables for.
+    base_pv : str
+        Base PV name to use for the variables.
+    class_mapping : dict[str, Any]
+        Mapping of PV attribute suffix -> variable specification.
+
+    Returns
+    -------
+    list[Variable]
+        Instantiated variables for the given element.
+
+    Raises
+    ------
+    ValueError
+        If a configured variable class name cannot be resolved.
+
+    """
+
+    variables = []
+
+    for attr, var_class in class_mapping.items():
+        pv_name = f"{base_pv}:{attr}"
+
+        variable = var_class(name=pv_name, element_name=element_name)
+        variables.append(variable)
+
+    return variables
