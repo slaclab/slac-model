@@ -13,8 +13,9 @@ def validate_element(element_type: str):
     def decorator(func):
         @wraps(func)
         def wrapper(simulator: Tao, element_name: str, *args, **kwargs):
-            element_attributes = simulator.ele_gen_attribs(element_name)
-            if element_attributes["TYPE"].lower() != element_type.lower():
+            # the "type" string label lives on the element head
+            element_label = simulator.ele(element_name).head.key
+            if element_label.lower() != element_type.lower():
                 raise ValueError(f"Element {element_name} is not of type {element_type}")
             return func(simulator, element_name, *args, **kwargs)
         return wrapper
@@ -75,7 +76,7 @@ def get_overlay_attribute(simulator: Tao, element_name: str, attribute_name: str
     --------
     The value of the specified overlay attribute.
     """
-    return simulator.ele_gen_attribs(element_name).control_vars[attribute_name]
+    return simulator.ele_control_var(element_name)[attribute_name]
 
 @validate_element(element_type="overlay")
 def set_overlay_attribute(simulator: Tao, element_name: str, attribute_name: str, value: Any):
@@ -94,7 +95,7 @@ def set_overlay_attribute(simulator: Tao, element_name: str, attribute_name: str
         The value to set the overlay attribute to.
 
     """
-    simulator.ele_gen_attribs(element_name).control_vars[attribute_name] = value
+    set_element_attribute(simulator, element_name, attribute_name, value)
 
 def _make_element_attribute_funcs(element_type, field_attr, to_pv, from_pv):
     @validate_element(element_type=element_type)
@@ -125,13 +126,21 @@ get_solenoid_bctrl, set_solenoid_bctrl = _make_element_attribute_funcs(
 )
 get_solenoid_bact = get_solenoid_bctrl
 
-get_kicker_bctrl, set_kicker_bctrl = _make_element_attribute_funcs(
-    element_type="kicker",
+get_hkicker_bctrl, set_hkicker_bctrl = _make_element_attribute_funcs(
+    element_type="hkicker",
     field_attr="BL_KICK",
     to_pv=lambda attrs: -attrs["BL_KICK"] * 10,
     from_pv=lambda attrs, value: -value / 10,
 )
-get_kicker_bact = get_kicker_bctrl
+get_hkicker_bact = get_hkicker_bctrl
+
+get_vkicker_bctrl, set_vkicker_bctrl = _make_element_attribute_funcs(
+    element_type="vkicker",
+    field_attr="BL_KICK",
+    to_pv=lambda attrs: -attrs["BL_KICK"] * 10,
+    from_pv=lambda attrs, value: -value / 10,
+)
+get_vkicker_bact = get_vkicker_bctrl
 
 
 @validate_element(element_type="sbend")
@@ -207,7 +216,8 @@ def _make_scaled_element_funcs(attribute_name: str, scale_factor: float):
 
 # cavity PV is in MV
 get_cavity_areq, set_cavity_areq = _make_scaled_element_funcs("VOLTAGE", 1e-6)
-get_cavity_preq, set_cavity_preq = _make_scaled_element_funcs("PHI0", 1 / 360.0)
+# cavity phase in degrees; PHI0 is stored in Bmad as rad / 2pi (turns)
+get_cavity_preq, set_cavity_preq = _make_scaled_element_funcs("PHI0", 360.0)
 get_cavity_areq_readback = get_cavity_areq
 get_cavity_preq_readback = get_cavity_preq
 
@@ -224,10 +234,11 @@ def set_cavity_modecfg(simulator: Tao, element_name: str, value: str):
     else:
         raise ValueError(f"Invalid value for CavityMODECFGVariable: {value}")
 
-def _klystron_stat_from_pv(value: int) -> bool:
+def _klystron_stat_from_pv(value: int) -> int:
     if value not in (0, 1):
         raise ValueError("Status must be 0 (off) or 1 (on)")
-    return value == 0
+    # overlay control vars are numeric; Bmad's "set ele" rejects a Python bool.
+    return int(value == 0)
 
 get_klystron_enld, set_klystron_enld = _make_overlay_funcs("ENLD_MEV", scale=1e-6)
 get_klystron_pdes, set_klystron_pdes = _make_overlay_funcs("PHASE_DEG")
