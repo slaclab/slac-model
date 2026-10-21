@@ -240,7 +240,7 @@ def _klystron_stat_from_pv(value: int) -> int:
     # overlay control vars are numeric; Bmad's "set ele" rejects a Python bool.
     return int(value == 0)
 
-get_klystron_enld, set_klystron_enld = _make_overlay_funcs("ENLD_MEV", scale=1e-6)
+get_klystron_enld, set_klystron_enld = _make_overlay_funcs("ENLD_MEV")
 get_klystron_pdes, set_klystron_pdes = _make_overlay_funcs("PHASE_DEG")
 get_klystron_pact = get_klystron_pdes
 
