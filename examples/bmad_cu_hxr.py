@@ -1,7 +1,6 @@
 import slac_db.device as dev
 from slac_model.bmad import model_tools
 from slac_model.models.cu import get_cu_hxr_bmad_va
-from slac_model.models.cu_matching_functions import cu_get_edes
 import epics 
 import numpy as np
 
