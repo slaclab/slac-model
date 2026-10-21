@@ -18,8 +18,10 @@ _DES_ATTRS = {
     'SOLN': ['BDES'],
     'XCOR': ['BDES'],
     'YCOR': ['BDES'],
-    'LCAV': ['ADES', 'PDES'],
 }
+
+# cs_name prefixes whose DES values are amplitude + phase, not BDES.
+_CAVITY_CS_PREFIXES = {'KLYS', 'ACCL', 'LCAV'}
 
 # Device types that are intentionally excluded from PV generation.
 _EXCLUDED_DEVICE_TYPES = {'TCAV'}
@@ -55,11 +57,12 @@ def get_modeled_devices(device_types=None, beampath=None, regions=None,
     ``device_types`` in the areas implied by ``regions`` or ``beampath``,
     sorts by longitudinal position (``sum_l_meters``), and returns a dict
     keyed by MAD element name.  Each value carries ``cs_name`` and
-    ``device_type``; for klystron-shaped devices (``cs_name`` prefix
-    ``KLYS`` or ``ACCL``) it also carries ``amplitude_pv`` and
-    ``phase_pv`` resolved against the beamcode implied by ``beampath``.
-    Elements whose ``cs_name`` prefix is in ``_EXCLUDED_DEVICE_TYPES``
-    (e.g. TCAV) are omitted.
+    ``device_type``; for cavity-shaped devices whose ``cs_name`` prefix
+    is in ``_CAVITY_CS_PREFIXES`` (``KLYS``, ``ACCL``, ``LCAV``) the
+    entry additionally carries ``amplitude_pv`` and ``phase_pv``
+    resolved against the beamcode implied by ``beampath``.  Magnet
+    entries omit those two keys.  Elements whose ``cs_name`` prefix is
+    in ``_EXCLUDED_DEVICE_TYPES`` (e.g. TCAV) are omitted.
 
     Parameters
     ----------
@@ -69,7 +72,7 @@ def get_modeled_devices(device_types=None, beampath=None, regions=None,
         Beam path name (e.g. ``'CU_HXR'``) used both to look up areas
         when ``regions`` is not supplied *and* to resolve the klystron
         beamcode (``CU_HXR`` → 1, ``CU_SXR`` → 2).  Required if any
-        klystron-shaped device is in the selection.
+        cavity-shaped device is in the selection.
     regions : list of str, optional
         Area names to search; overrides ``beampath`` for area lookup.
     first, last : str, optional
@@ -80,10 +83,11 @@ def get_modeled_devices(device_types=None, beampath=None, regions=None,
     Returns
     -------
     dict[str, dict]
-        Mapping ``mad_name -> {'cs_name', 'device_type',
-        'amplitude_pv', 'phase_pv'}``, insertion-ordered by
-        ``sum_l_meters``.  ``amplitude_pv`` and ``phase_pv`` are
-        ``None`` for non-klystron devices.
+        Mapping ``mad_name -> {'cs_name', 'device_type', ...}``,
+        insertion-ordered by ``sum_l_meters``.  Cavity-shaped entries
+        (``cs_name`` prefix in ``_CAVITY_CS_PREFIXES``) additionally
+        carry ``'amplitude_pv'`` and ``'phase_pv'``; magnet entries
+        do not.
     """
     if device_types is None:
         device_types = _MODELED_DEVICE_TYPES
@@ -141,14 +145,12 @@ def get_modeled_devices(device_types=None, beampath=None, regions=None,
         entry = {
             'cs_name': cs_name,
             'device_type': dev.get_attribute(e, 'device_type'),
-            'amplitude_pv': None,
-            'phase_pv': None,
         }
-        if cs_prefix in ('KLYS', 'ACCL'):
+        if cs_prefix in _CAVITY_CS_PREFIXES:
             if beamcode is None:
                 raise ValueError(
                     f"beampath {beampath!r} is required / not supported for "
-                    f"beamcode resolution on klystron-shaped device {e!r}. "
+                    f"beamcode resolution on cavity-shaped device {e!r}. "
                     f"Supported: {list(_BEAM_PATH_BEAMCODE)}."
                 )
             entry['amplitude_pv'], entry['phase_pv'] = _klys_pvs(e, beamcode)
@@ -159,12 +161,12 @@ def get_modeled_devices(device_types=None, beampath=None, regions=None,
 def get_model_pvs(devices):
     """Return DES PV names for the modeled devices in *devices*.
 
-    *devices* is the dict returned by :func:`get_modeled_devices`, mapping
-    MAD element name → ``{'cs_name', 'device_type', 'amplitude_pv',
-    'phase_pv'}``.  For klystron-shaped devices the beamcode-resolved
-    ``amplitude_pv`` / ``phase_pv`` entries are used directly; for other
-    device types the per-type DES attribute suffixes in ``_DES_ATTRS``
-    are appended to ``cs_name`` (LCAV contributes two entries).
+    *devices* is the dict returned by :func:`get_modeled_devices`.
+    Cavity-shaped entries (``cs_name`` prefix in
+    ``_CAVITY_CS_PREFIXES``: ``KLYS``, ``ACCL``, ``LCAV``) use the
+    pre-resolved ``amplitude_pv`` / ``phase_pv`` directly; magnet
+    entries have the per-type DES suffix in ``_DES_ATTRS``
+    (``['BDES']``) appended to ``cs_name``.
 
     Devices whose ``cs_name`` prefix is in ``_EXCLUDED_DEVICE_TYPES``
     (e.g. TCAV) are silently skipped — defensive guard; the discovery
@@ -183,7 +185,7 @@ def get_model_pvs(devices):
     Raises
     ------
     ValueError
-        If a non-klystron device's ``device_type`` is not in
+        If a non-cavity device's ``device_type`` is not in
         ``_DES_ATTRS`` and not in ``_EXCLUDED_DEVICE_TYPES``.
     """
     pvs = []
@@ -193,10 +195,10 @@ def get_model_pvs(devices):
         cs_prefix = cs_name.split(':')[0] if cs_name else ''
         if cs_prefix in _EXCLUDED_DEVICE_TYPES:
             continue
-        if cs_prefix in ('KLYS', 'ACCL'):
-            if attrs['amplitude_pv']:
+        if cs_prefix in _CAVITY_CS_PREFIXES:
+            if attrs.get('amplitude_pv'):
                 pvs.append(attrs['amplitude_pv'])
-            if attrs['phase_pv']:
+            if attrs.get('phase_pv'):
                 pvs.append(attrs['phase_pv'])
         elif device_type in _DES_ATTRS:
             for attr in _DES_ATTRS[device_type]:
