@@ -17,6 +17,7 @@ authors = [
 cheetah = ["cheetah-accelerator", "lume-cheetah", "torch"]
 bmad = ["pytao", "lume-bmad"]
 impact = ["lume-impact", "distgen"]
+all = ["cheetah-accelerator", "lume-cheetah", "torch", "pytao", "lume-bmad", "lume-impact", "distgen", "pytest"]
 test = ["pytest"]
 
 [project.urls]

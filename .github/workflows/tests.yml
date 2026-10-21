@@ -38,7 +38,7 @@ jobs:
       - name: Install package and remaining dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install ".[test,bmad,cheetah,impact]"
+          python -m pip install ".[all]"
       - name: List Python package versions
         run: python -m pip list
       - name: Test with pytest
