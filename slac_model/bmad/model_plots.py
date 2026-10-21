@@ -110,22 +110,35 @@ def quad_table(tao, pct_lim=1, show_energy=False):
                 )
 
 
-def plot_twiss(tao, output, info="", xoff=0):
-    """Plot twiss parameters for one output as well as element lables"""
+def plot_twiss(model, info="", xoff=0):
+    """Plot Twiss beta_a, beta_b and total energy from a LUMEBmadModel.
+
+    Reads the per-element arrays via ``model.get([...])`` (keys
+    ``s_ele``, ``a.beta``, ``b.beta``, ``e_tot``) and annotates quad
+    names using ``model.tao``.  Assumes the caller has already refreshed
+    the model state (``model.set(...)`` refreshes it internally; otherwise
+    call ``model.update_state()`` first).
+    """
+    data = model.get(["s_ele", "a.beta", "b.beta", "e_tot"])
+    s = data["s_ele"]
+    beta_a = data["a.beta"]
+    beta_b = data["b.beta"]
+    e_tot = data["e_tot"]
+
     fig, ax = plt.subplots(figsize=(8, 4))
-    ax.plot(output["ele.s"], output["ele.a.beta"], label=r"$\beta_a$")
-    ax.plot(output["ele.s"], output["ele.b.beta"], label=r"$\beta_b$")
+    ax.plot(s, beta_a, label=r"$\beta_a$")
+    ax.plot(s, beta_b, label=r"$\beta_b$")
     plt.legend()
-    # Add energy to the rhs
     ax2 = ax.twinx()
-    ax2.plot(output["ele.s"], output["ele.e_tot"] / 1e9, color="red")
+    ax2.plot(s, e_tot / 1e9, color="red")
     ax2.set_ylabel("Energy (GeV)")
     ax.set_xlabel("s (m)")
     ax.set_ylabel("Twiss Beta (m)")
-    efinal = output["ele.e_tot"][-1] / 1e9
+    efinal = e_tot[-1] / 1e9
     plt.title(f"{info} Final energy: {efinal:.2f} GeV")
-    quads = tao.lat_list("quad::Q*", "ele.name", flags="-no_slaves")
-    for q in quads:
+
+    tao = model.tao
+    for q in tao.lat_list("quad::Q*", "ele.name", flags="-no_slaves"):
         plt.text(
             tao.ele_head(q)["s"],
             -30,
