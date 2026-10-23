@@ -34,6 +34,7 @@ def get_cu_hxr_bmad_model(start_element: str, end_element: str):
     # set tracking to start_element
     tao.cmd(f"set beam track_start = {start_element}")
 
+    tao.cmd(f"set ele {start_element}:{end_element} field_master=True")
     return tao
 
 def get_cu_hxr_bmad_va(
