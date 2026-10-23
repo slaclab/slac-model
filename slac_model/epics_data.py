@@ -5,6 +5,38 @@ real control-system data.  Expect it to be absorbed into a broader
 live-modeling module later; for now, keep it narrow and dependency-light.
 """
 
+from datetime import datetime
+
+
+def _resolve_date_time(date_time):
+    """Resolve a date_time arg to a single absolute ``datetime``.
+
+    Accepts the same formats as ``meme.archive.get_data_at_time``:
+    an ISO-ish string, a relative string like ``'1 hour ago'``, or
+    a ``datetime``.  Returns a ``datetime`` so every downstream
+    archive call shares one absolute instant (no drift across
+    chunks or retries for relative strings).
+
+    Raises
+    ------
+    ValueError
+        If the string cannot be parsed, or if ``dateparser`` is not
+        installed and the input is a string.
+    """
+    if isinstance(date_time, datetime):
+        return date_time
+    try:
+        import dateparser
+    except ImportError as exc:
+        raise ValueError(
+            f"date_time={date_time!r} is a string, but dateparser is "
+            "not installed; install dateparser or pass a datetime."
+        ) from exc
+    resolved = dateparser.parse(str(date_time))
+    if resolved is None:
+        raise ValueError(f"Could not parse date_time={date_time!r}")
+    return resolved
+
 
 def get_pv_data(pvs, date_time=None, batch_n=0):
     """Fetch EPICS values for a list of PV names.
@@ -22,7 +54,9 @@ def get_pv_data(pvs, date_time=None, batch_n=0):
         reading live EPICS values.  Accepts the same formats as
         ``meme.archive.get_data_at_time``: a string like
         ``'2024-01-15T10:30:00'`` or ``'1 hour ago'``, or a Python datetime
-        object.
+        object.  Relative strings are resolved to one absolute instant
+        up front and reused for every chunk/retry, so a batched request
+        cannot combine values from different historical instants.
     batch_n : int, optional
         Only used when *date_time* is provided (archive mode).  If greater
         than 0, the PV list is split into chunks of this size and each chunk
@@ -52,8 +86,10 @@ def get_pv_data(pvs, date_time=None, batch_n=0):
     if date_time is not None:
         from meme.archive import get_data_at_time
 
+        at = _resolve_date_time(date_time)
+
         if batch_n <= 0:
-            return get_data_at_time(pvs, at=date_time, timeout=20)
+            return get_data_at_time(pvs, at=at, timeout=20)
 
         # Split into chunks and fetch with retry logic.
         chunks = [pvs[i:i + batch_n] for i in range(0, len(pvs), batch_n)]
@@ -65,7 +101,7 @@ def get_pv_data(pvs, date_time=None, batch_n=0):
             last_failed = None
             for attempt in range(1, max_attempts + 1):
                 try:
-                    chunk_result = get_data_at_time(chunk, at=date_time, timeout=20)
+                    chunk_result = get_data_at_time(chunk, at=at, timeout=20)
                     failed = [pv for pv in chunk if chunk_result.get(pv) is None]
                     if failed:
                         last_failed = failed
