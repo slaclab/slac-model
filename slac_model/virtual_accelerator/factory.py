@@ -8,7 +8,7 @@ from pytao import Tao
 from typing import Any
 from slac_db.devices import get_device_accessors, get_device_types
 from slac_model.model_tools.bmad import get_bmad_device_names
-from slac_model.virtual_accelerator import actions as bmad_actions
+from slac_model.virtual_accelerator import bmad_actions as bmad_actions
 from lume_bmad.model import LUMEBmadModel
 from lume.model import LUMEModel
 from . import ACCESSOR_MAPPING
