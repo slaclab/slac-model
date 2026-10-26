@@ -1,6 +1,6 @@
 from pytao import Tao
 import re
-KLYSTRON_PATTERN = re.compile(r"^K\d+_\d+[A-Z]?$")
+KLYSTRON_PATTERN = re.compile(r"^K\d+_\d+[A-Z]$")
 
 def get_bmad_device_names(tao: Tao):
     """Return slac-db device names for the given BMAD Tao instance.
