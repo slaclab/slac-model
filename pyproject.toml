@@ -11,6 +11,7 @@ dynamic = ["version"]
 dependencies = [
     "numpy",
     "openpmd-beamphysics",
+    "slac-db @ git+https://github.com/slaclab/slac-db.git"
 ]
 
 [project.optional-dependencies]

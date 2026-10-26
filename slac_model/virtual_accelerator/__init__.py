@@ -34,7 +34,7 @@ ACCESSOR_MAPPING = {
         "bmin": "BMINVariable",
         "ctrl": "ControlStateVariable"
     },
-    "VCOR": {
+    "YCOR": {
         "bact": "VKickerBACTVariable",
         "bctrl": "VKickerBCTRLVariable",
         "bdes": "VKickerBCTRLVariable",
@@ -43,4 +43,21 @@ ACCESSOR_MAPPING = {
         "bmin": "BMINVariable",
         "ctrl": "ControlStateVariable"
     },
+    "TCAV": {
+        "amplitude_act_beamcode1": "CavityAREQReadbackVariable",
+        "amplitude_act_beamcode2": "CavityAREQReadbackVariable",
+        "amplitude_des_beamcode1": "CavityADESVariable",
+        "amplitude_des_beamcode2": "CavityADESVariable",
+        "amplitude_fbenb": "DummyEnumVariable",
+        "amplitude_fbst": "DummyEnumVariable",
+        "amplitude_wocho": "CavityADESVariable",
+        "phase_act_beamcode1": "CavityPREQReadbackVariable",
+        "phase_act_beamcode2": "CavityPREQReadbackVariable",
+        "phase_des_beamcode1": "CavityPREQVariable",
+        "phase_des_beamcode2": "CavityPREQVariable",
+        "phase_fbenb": "DummyEnumVariable",
+        "phase_fbst": "DummyEnumVariable",
+        "rf_enable_beamcode1": "CavityMODECFGVariable",
+        "rf_enable_beamcode2": "CavityMODECFGVariable"
+    }
 }
