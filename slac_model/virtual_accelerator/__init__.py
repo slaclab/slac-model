@@ -7,8 +7,8 @@ ACCESSOR_MAPPING = {
         "bctrl": "QuadrupoleBCTRLVariable",
         "bdes": "QuadrupoleBCTRLVariable",
         "bcon": "QuadrupoleBCTRLVariable",
-        "bmax": "BMAXVariable",
-        "bmin": "BMINVariable",
+        "bmax": "BmaxVariable",
+        "bmin": "BminVariable",
         "ctrl": "ControlStateVariable"
     },
     "BPM": {
