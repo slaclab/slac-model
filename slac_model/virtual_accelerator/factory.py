@@ -72,7 +72,7 @@ def create_virtual_accelerator(simulator: Any) -> LUMEModel:
             pv = device_accessors.get(accessor)
 
             # create the LUME variable for this accessor and add it to the list
-            lume_variables.append(_cls(pv))
+            lume_variables.append(_cls(name=pv, element_name=device_name))
             
     virtual_accelerator = lume_model_module(
         tao=simulator,
