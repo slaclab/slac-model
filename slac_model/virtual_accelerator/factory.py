@@ -4,15 +4,23 @@ creates virtual accelerator instances based on the provided simulation data and 
 
 """
 
+import logging
+
 from pytao import Tao
 from typing import Any
-from slac_db.devices import get_device_accessors, get_device_types
+from slac_db.device import get_all_accessors, get_attribute, get_devices
 from slac_model.model_tools.bmad import get_bmad_device_names
 from slac_model.virtual_accelerator import bmad_actions as bmad_actions
 from lume_bmad.model import LUMEBmadModel
 from lume.model import LUMEModel
 from . import ACCESSOR_MAPPING
 
+logger = logging.getLogger(__name__)
+
+
+def get_device_type(device_name: str) -> str:
+    """ Get the device type for the given device name from slac-db """
+    return get_attribute(device_name, "device_type")
 
 def get_simulator_device_names(simulator: Any):
     """ get all the slac-db device names for the given simulator instance """
@@ -54,22 +62,35 @@ def create_virtual_accelerator(simulator: Any) -> LUMEModel:
     lume_variable_module = get_lume_variable_module(simulator)
     lume_model_module = get_lume_model_module(simulator)
 
-    # get all slac-db accessor dicts
-    all_device_accessors = {name: get_device_accessors(name) for name in device_names}
+    known_devices = set(get_devices(include_inactive=True))
 
     # for each device in the BMAD simulation create the lume variables needed to support that device
     lume_variables = []
     for device_name in device_names:
-        device_accessors = all_device_accessors.get(device_name)
-        device_type = get_device_types(device_name)
+        if device_name not in known_devices:
+            continue
+        device_type = get_device_type(device_name)
+        accessor_mapping = ACCESSOR_MAPPING.get(device_type, {})
+        if not accessor_mapping:
+            continue
+        device_accessors = get_all_accessors(device_name)
+        missing_accessors = accessor_mapping.keys() - device_accessors.keys()
+        if missing_accessors:
+            logger.warning(
+                "Skipping accessors missing from slac-db for %s: %s",
+                device_name,
+                ", ".join(sorted(missing_accessors)),
+            )
 
         # for each accessor in the device type's accessor mapping create the corresponding LUME variable
-        for accessor, variable_class in ACCESSOR_MAPPING.get(device_type, {}).items():
+        for accessor, variable_class in accessor_mapping.items():
+            if accessor not in device_accessors:
+                continue
             # get the variable class for the accessor
             _cls = getattr(lume_variable_module, variable_class)
 
             # get pv for the accessor
-            pv = device_accessors.get(accessor)
+            pv = device_accessors[accessor]
 
             # create the LUME variable for this accessor and add it to the list
             lume_variables.append(_cls(name=pv, element_name=device_name))
@@ -80,4 +101,3 @@ def create_virtual_accelerator(simulator: Any) -> LUMEModel:
     )
 
     return virtual_accelerator
-
