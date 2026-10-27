@@ -1,0 +1,46 @@
+name: Run Tests
+
+on:
+  push:
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+
+    defaults:
+      run:
+        shell: bash -el {0}
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Create fresh test environment with Python ${{ matrix.python-version }}
+        uses: conda-incubator/setup-miniconda@6bd9d14c76e9fc5223db3dd28e004f2c458599e8 # v3
+        with:
+          miniforge-version: latest
+          activate-environment: test-env
+          python-version: ${{ matrix.python-version }}
+          channels: conda-forge
+          channel-priority: strict
+          auto-activate-base: false
+      - name: Install PyTao, Bmad, and Impact-T
+        run: conda install --yes --override-channels -c conda-forge "pytao>=1" impact-t pip
+      - name: Install CPU-only PyTorch
+        run: python -m pip install --upgrade --index-url https://download.pytorch.org/whl/cpu torch
+      - name: Install package and remaining dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ".[all]"
+      - name: List Python package versions
+        run: python -m pip list
+      - name: Test with pytest
+        run: |
+          python -m pytest slac_model/tests
