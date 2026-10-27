@@ -13,7 +13,7 @@ def validate_element(element_type: str):
     def decorator(func):
         @wraps(func)
         def wrapper(simulator: Tao, element_name: str, *args, **kwargs):
-            # the "type" string label lives on the element head
+            # the "key" string label lives on the element head
             element_label = simulator.ele(element_name).head.key
             if element_label.lower() != element_type.lower():
                 raise ValueError(f"Element {element_name} is not of type {element_type}")
@@ -56,7 +56,9 @@ def get_element_attribute(simulator: Tao, element_name: str, attribute_name: str
     --------
     The value of the specified attribute.
     """
-    return simulator.ele_gen_attribs(element_name)[attribute_name]
+    attributes = simulator.ele_gen_attribs(element_name)
+    key = attribute_name if attribute_name in attributes else attribute_name.upper()
+    return attributes[key]
 
 @validate_element(element_type="overlay")
 def get_overlay_attribute(simulator: Tao, element_name: str, attribute_name: str):
