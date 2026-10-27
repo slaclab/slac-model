@@ -1,26 +1,47 @@
 [build-system]
-requires = ["setuptools>=64", "setuptools-scm>=8"]
+requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "slac-model"
+version = "0.1.0"
 description = "Repository for slac-tools related accelerator model code."
 readme = "README.md"
 requires-python = ">=3.11"
-dynamic = ["version"]
+authors = [
+    {name = "SLAC National Accelerator Laboratory"}
+]
 dependencies = [
     "numpy",
     "openpmd-beamphysics",
+    "slac-db @ git+https://github.com/slaclab/slac-db.git"
 ]
 
 [project.optional-dependencies]
-dev = ["pytest"]
+cheetah = ["cheetah-accelerator", "lume-cheetah", "torch"]
 bmad = ["pytao", "lume-bmad"]
-impact = ["lume-impact"]
-cheetah = ["cheetah-accelerator"]
-all = ["pytao", "lume-bmad", "lume-impact", "cheetah-accelerator"]
+impact = [
+    "lume-impact", 
+    "distgen @ git+https://github.com/ColwynGulliford/distgen"
+]
+all = [
+    "cheetah-accelerator", 
+    "lume-cheetah", 
+    "torch", 
+    "pytao", 
+    "lume-bmad", 
+    "lume-impact", 
+    "distgen @ git+https://github.com/ColwynGulliford/distgen", 
+    "pytest"
+]
+test = ["pytest"]
+
+[project.urls]
+Homepage = "https://github.com/slaclab/slac-model"
+Repository = "https://github.com/slaclab/slac-model"
 
 [tool.setuptools.packages.find]
 include = ["slac_model*"]
 
-[tool.setuptools_scm]
+[tool.pytest.ini_options]
+testpaths = ["slac_model/tests"]

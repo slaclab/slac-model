@@ -218,3 +218,6 @@ __marimo__/
 
 # dev folders
 dev/
+
+# bmad artifacts
+*digested*
