@@ -21,8 +21,8 @@ ACCESSOR_MAPPING = {
         "bctrl": "SolenoidBCTRLVariable",
         "bdes": "SolenoidBCTRLVariable",
         "bcon": "SolenoidBCTRLVariable",
-        "bmax": "BMAXVariable",
-        "bmin": "BMINVariable",
+        "bmax": "BmaxVariable",
+        "bmin": "BminVariable",
         "ctrl": "ControlStateVariable"
     },
     "XCOR": {
@@ -30,8 +30,8 @@ ACCESSOR_MAPPING = {
         "bctrl": "HKickerBCTRLVariable",
         "bdes": "HKickerBCTRLVariable",
         "bcon": "HKickerBCTRLVariable",
-        "bmax": "BMAXVariable",
-        "bmin": "BMINVariable",
+        "bmax": "BmaxVariable",
+        "bmin": "BminVariable",
         "ctrl": "ControlStateVariable"
     },
     "YCOR": {
@@ -39,18 +39,18 @@ ACCESSOR_MAPPING = {
         "bctrl": "VKickerBCTRLVariable",
         "bdes": "VKickerBCTRLVariable",
         "bcon": "VKickerBCTRLVariable",
-        "bmax": "BMAXVariable",
-        "bmin": "BMINVariable",
+        "bmax": "BmaxVariable",
+        "bmin": "BminVariable",
         "ctrl": "ControlStateVariable"
     },
     "TCAV": {
         "amplitude_act_beamcode1": "CavityAREQReadbackVariable",
         "amplitude_act_beamcode2": "CavityAREQReadbackVariable",
-        "amplitude_des_beamcode1": "CavityADESVariable",
-        "amplitude_des_beamcode2": "CavityADESVariable",
+        "amplitude_des_beamcode1": "CavityAREQVariable",
+        "amplitude_des_beamcode2": "CavityAREQVariable",
         "amplitude_fbenb": "DummyEnumVariable",
         "amplitude_fbst": "DummyEnumVariable",
-        "amplitude_wocho": "CavityADESVariable",
+        "amplitude_wocho": "CavityAREQVariable",
         "phase_act_beamcode1": "CavityPREQReadbackVariable",
         "phase_act_beamcode2": "CavityPREQReadbackVariable",
         "phase_des_beamcode1": "CavityPREQVariable",
