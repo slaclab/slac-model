@@ -7,9 +7,8 @@ virtual accelerator with variables and screen dump locations configured.
 
 import os
 from pytao import Tao
-from lume_bmad.model import LUMEBmadModel
 
-from slac_model.virtual_accelerator.variables import get_variables
+from slac_model.virtual_accelerator.factory import create_virtual_accelerator
 
 def get_cu_hxr_bmad_model(start_element: str, end_element: str):
     """
@@ -58,15 +57,4 @@ def get_cu_hxr_bmad_va(
     # get the Tao instance for the CU_HXR lattice from start_element to end_element
     tao = get_cu_hxr_bmad_model(start_element=start_element, end_element=end_element)
 
-    # get variables for all elements in the lattice based on the 
-    # element attribute mapping for the model
-    variables = get_variables(tao)
-
-
-    # create LUMEBmadModel-based VA with the Tao instance, variables, and active screens for beam dumping
-    va = LUMEBmadModel(
-        tao=tao,
-        action_variables=variables,
-    )
-
-    return va
+    return create_virtual_accelerator(tao)
