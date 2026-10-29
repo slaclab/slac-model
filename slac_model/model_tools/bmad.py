@@ -1,5 +1,8 @@
 from pytao import Tao
+import logging
 import re
+
+logger = logging.getLogger(__name__)
 KLYSTRON_PATTERN = re.compile(r"^K\d+_\d+[A-Z]$")
 
 def get_bmad_device_names(tao: Tao):
@@ -69,7 +72,7 @@ def cu_energy_match(edes, tao):
     for label, end_ele, dat, var in stages:
         meas = edes[label]
         before = tao.ele_gen_attribs(end_ele)['E_TOT'] / 1e9
-        print(f'{label} Energy before (meas, model): ({meas}, {before:0.4})')
+        logger.debug('%s Energy before (meas, model): (%s, %0.4g)', label, meas, before)
         tao.cmds([
             'veto var *',
             'veto dat *',
@@ -79,6 +82,6 @@ def cu_energy_match(edes, tao):
         ])
         tao.cmd('run')
         after = tao.ele_gen_attribs(end_ele)['E_TOT'] / 1e9
-        print(f'{label} Energy after  (meas, model): ({meas}, {after:0.4})')
+        logger.debug('%s Energy after  (meas, model): (%s, %0.4g)', label, meas, after)
     for line in tao.cmd('show var linac_fudge'):
-        print(line)
+        logger.debug('%s', line)
