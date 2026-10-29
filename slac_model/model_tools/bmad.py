@@ -43,3 +43,42 @@ def get_bmad_device_names(tao: Tao):
     normalized_elements = list(dict.fromkeys(normalized_elements))
 
     return normalized_elements
+
+
+def cu_energy_match(edes, tao):
+    """Drive linac_fudge[1..3] so the Bmad model's L1/L2/L3 energies
+    match the given EDES values.
+
+    Parameters
+    ----------
+    edes : dict
+        ``{'L1': float, 'L2': float, 'L3': float}`` — energies in GeV.
+        Callers typically build this with a small ``cu_get_edes(line)``
+        helper (see the example scripts in ``examples/``).
+    tao : pytao.Tao
+        Active Tao instance for the model being matched. Must carry
+        ``linac_fudge[1..3]`` variables and
+        ``BC1.energy[2]`` / ``BC2.energy[2]`` / ``L3.energy[2]`` datums
+        (standard CU_HXR tao init).
+    """
+    stages = [
+        ('L1', 'ENDBC1', 'BC1.energy[2]', 'linac_fudge[1]'),
+        ('L2', 'ENDBC2', 'BC2.energy[2]', 'linac_fudge[2]'),
+        ('L3', 'ENDL3',  'L3.energy[2]',  'linac_fudge[3]'),
+    ]
+    for label, end_ele, dat, var in stages:
+        meas = edes[label]
+        before = tao.ele_gen_attribs(end_ele)['E_TOT'] / 1e9
+        print(f'{label} Energy before (meas, model): ({meas}, {before:0.4})')
+        tao.cmds([
+            'veto var *',
+            'veto dat *',
+            f'set dat {dat}|meas = {meas}E9',
+            f'use dat {dat}',
+            f'use var {var}',
+        ])
+        tao.cmd('run')
+        after = tao.ele_gen_attribs(end_ele)['E_TOT'] / 1e9
+        print(f'{label} Energy after  (meas, model): ({meas}, {after:0.4})')
+    for line in tao.cmd('show var linac_fudge'):
+        print(line)
