@@ -2,7 +2,6 @@ from pytao import Tao
 import logging
 import re
 
-import epics
 import numpy as np
 import slac_db.device as device
 
