@@ -16,7 +16,7 @@ dependencies = [
     "openpmd-beamphysics",
     "slac-db @ git+https://github.com/slaclab/slac-db.git@main",
     "epics",
-    "meme @ git+https://github.com/slaclab/meme.git@master"
+    "meme @ git+https://github.com/slaclab/meme.git"
 ]
 
 [project.optional-dependencies]
