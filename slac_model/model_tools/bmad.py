@@ -2,6 +2,10 @@ from pytao import Tao
 import logging
 import re
 
+import epics
+import numpy as np
+import slac_db.device as device
+
 logger = logging.getLogger(__name__)
 KLYSTRON_PATTERN = re.compile(r"^K\d+_\d+[A-Z]$")
 
@@ -85,3 +89,50 @@ def cu_energy_match(edes, tao):
         logger.debug('%s Energy after  (meas, model): (%s, %0.4g)', label, meas, after)
     for line in tao.cmd('show var linac_fudge'):
         logger.debug('%s', line)
+
+
+def cu_energy_fudge(edes, tao):
+    """Compute per-station amplitude/phase 'fudge' for L2 and L3 so each
+    region's total gain matches the EDES values, and push the fudged
+    ``ENLD_MEV`` / ``PHASE_DEG`` back into the Bmad model.
+
+    Parameters
+    ----------
+    edes : dict
+        ``{'L1': float, 'L2': float, 'L3': float}`` - energies in GeV,
+        same shape as :func:`cu_energy_match`'s input.
+    tao : pytao.Tao
+        Active Tao instance for the CU_HXR (or compatible) model.
+    """
+    regions = [
+        ('L2', edes['L2'] - edes['L1']),
+        ('L3', edes['L3'] - edes['L2']),
+    ]
+
+    l2_phase = tao.ele_control_var('O_L2')['PHASE_DEG']
+    for region, expected_gain in regions:
+        l2_phase = l2_phase if region == 'L2' else 0
+
+        stations = device.get_devices(area=region, device_type='LCAV')
+        ampl, phas = [], []
+        for stn in stations:
+            vals = tao.ele_control_var(stn)
+            sbst_phase = tao.ele_control_var(f'SBST_{stn[1:3]}')['PHASE_DEG']
+            ampl.append(vals['ENLD_MEV'] * vals['IN_USE'])
+            phas.append(vals['PHASE_DEG'] + l2_phase + sbst_phase)
+
+        ampl = np.array(ampl)
+        phas = np.deg2rad(np.array(phas))
+        gain_measured = ampl * np.cos(phas)
+        dF = (1000 * expected_gain - gain_measured.sum()) / ampl.sum()
+        complex_gain_fudged = ampl * np.exp(1j * phas) + ampl * dF
+        amplF = np.abs(complex_gain_fudged)
+        phasF = np.degrees(np.angle(complex_gain_fudged))
+
+        logger.debug('%s fudge dF=%0.4g (expected_gain=%s GeV)', region, dF, expected_gain)
+        tao.cmd(f'set ele O_L2 PHASE_DEG = 0')
+        tao.cmd("set global lattice_calc_on = F")
+        for indx, stn in enumerate(stations):
+            tao.cmd(f'set ele {stn} ENLD_MEV = {amplF[indx]}')
+            tao.cmd(f'set ele {stn} PHASE_DEG = {phasF[indx]}')
+        tao.cmd("set global lattice_calc_on = T")   
