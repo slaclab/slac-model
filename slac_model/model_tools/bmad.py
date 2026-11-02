@@ -137,6 +137,8 @@ def cu_energy_fudge(edes, tao):
         tao.cmd(f'set ele O_L2 PHASE_DEG = 0')
         tao.cmd("set global lattice_calc_on = F")
         for indx, stn in enumerate(stations):
+            if not tao.ele_control_var(stn)['IN_USE']:
+                continue
             tao.cmd(f'set ele {stn} ENLD_MEV = {amplF[indx]}')
             tao.cmd(f'set ele {stn} PHASE_DEG = {phasF[indx]}')
         tao.cmd("set global lattice_calc_on = T")   
