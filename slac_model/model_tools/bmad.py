@@ -108,15 +108,28 @@ def cu_energy_fudge(edes, tao):
         ('L3', edes['L3'] - edes['L2']),
     ]
 
-    l2_phase = tao.ele_control_var('O_L2')['PHASE_DEG']
-    for region, expected_gain in regions:
-        l2_phase = l2_phase if region == 'L2' else 0
+    l2_phase_init = tao.ele_control_var('O_L2')['PHASE_DEG']
 
-        stations = device.get_devices(area=region, device_type='LCAV')
+    region_stations = {
+        region: device.get_devices(area=region, device_type='LCAV')
+        for region, _ in regions
+    }
+
+    sbst_phases = {}
+    for stations in region_stations.values():
+        for stn in stations:
+            key = f'SBST_{stn[1:3]}'
+            if key not in sbst_phases:
+                sbst_phases[key] = tao.ele_control_var(key)['PHASE_DEG']
+
+    for region, expected_gain in regions:
+        l2_phase = l2_phase_init if region == 'L2' else 0
+
+        stations = region_stations[region]
         ampl, phas = [], []
         for stn in stations:
             vals = tao.ele_control_var(stn)
-            sbst_phase = tao.ele_control_var(f'SBST_{stn[1:3]}')['PHASE_DEG']
+            sbst_phase = sbst_phases[f'SBST_{stn[1:3]}']
             ampl.append(vals['ENLD_MEV'] * vals['IN_USE'])
             phas.append(vals['PHASE_DEG'] + l2_phase + sbst_phase)
 
@@ -135,6 +148,8 @@ def cu_energy_fudge(edes, tao):
 
         logger.debug('%s fudge dF=%0.4g (expected_gain=%s GeV)', region, dF, expected_gain)
         tao.cmd(f'set ele O_L2 PHASE_DEG = 0')
+        for sbst in sbst_phases:
+            tao.cmd(f'set ele {sbst} PHASE_DEG = 0')
         tao.cmd("set global lattice_calc_on = F")
         for indx, stn in enumerate(stations):
             if not tao.ele_control_var(stn)['IN_USE']:
