@@ -14,8 +14,8 @@ authors = [
 dependencies = [
     "numpy",
     "openpmd-beamphysics",
-    "slac-db @ git+https://github.com/slaclab/slac-db.git@main"
-    "epics"
+    "slac-db @ git+https://github.com/slaclab/slac-db.git@main",
+    "epics",
     "meme @ git+https://github.com/slaclab/meme.git@main"
 ]
 
