@@ -123,7 +123,12 @@ def cu_energy_fudge(edes, tao):
         ampl = np.array(ampl)
         phas = np.deg2rad(np.array(phas))
         gain_measured = ampl * np.cos(phas)
-        dF = (1000 * expected_gain - gain_measured.sum()) / ampl.sum()
+        total_ampl = ampl.sum()
+        if total_ampl == 0:
+            if expected_gain == 0:
+                continue
+            raise ValueError(f'Cannot match {region}: no nonzero in-use station amplitudes')
+        dF = (1000 * expected_gain - gain_measured.sum()) / total_ampl
         complex_gain_fudged = ampl * np.exp(1j * phas) + ampl * dF
         amplF = np.abs(complex_gain_fudged)
         phasF = np.degrees(np.angle(complex_gain_fudged))
