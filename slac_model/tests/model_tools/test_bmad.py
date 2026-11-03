@@ -11,7 +11,6 @@ pytest.importorskip("lume_bmad")
 import slac_db.device as device
 
 from slac_model.models.cu import get_cu_hxr_bmad_model
-from slac_model.model_tools import bmad as bmad_tools
 from slac_model.model_tools.bmad import cu_energy_fudge, cu_energy_match
 
 
@@ -120,19 +119,80 @@ def test_fudge_is_idempotent(simulator, baseline_edes):
     assert _region_energy(simulator, 'L3') == pytest.approx(edes['L3'], rel=5e-4)
 
 
-def test_fudge_raises_when_region_is_empty(simulator, baseline_edes, monkeypatch):
-    """An empty L2 station list with a nonzero expected gain must raise."""
-    real_get_devices = device.get_devices
+def test_fudge_preserves_disabled_station_phase_and_enld(simulator, baseline_edes):
+    """A disabled L3 station must retain its drive and have the SBST offset
+    folded into its own PHASE_DEG once the overlay is zeroed."""
+    stn = device.get_devices(area='L3', device_type='LCAV')[0]
+    orig = simulator.ele_control_var(stn)
+    orig_phase = orig['PHASE_DEG']
+    orig_enld = orig['ENLD_MEV']
+    sbst_key = f'SBST_{stn[1:3]}'
+    sbst_phase = simulator.ele_control_var(sbst_key)['PHASE_DEG']
 
-    def fake_get_devices(**kwargs):
-        if kwargs.get('area') == 'L2':
-            return []
-        return real_get_devices(**kwargs)
+    simulator.cmd(f'set ele {stn} IN_USE = 0')
 
-    monkeypatch.setattr(bmad_tools.device, 'get_devices', fake_get_devices)
+    cu_energy_fudge(dict(baseline_edes), simulator)
+
+    after = simulator.ele_control_var(stn)
+    assert after['ENLD_MEV'] == pytest.approx(orig_enld, abs=1e-9), (
+        f'{stn} ENLD_MEV was overwritten while disabled'
+    )
+    assert after['PHASE_DEG'] == pytest.approx(orig_phase + sbst_phase, abs=1e-6), (
+        f'{stn} PHASE_DEG did not absorb the SBST offset before overlay zeroing'
+    )
+    assert simulator.ele_control_var(sbst_key)['PHASE_DEG'] == pytest.approx(0.0, abs=1e-9)
+
+
+def test_fudge_preserves_disabled_l2_station_folds_l2_overlay(simulator, baseline_edes):
+    """A disabled L2 station must carry both the O_L2 and SBST offsets after a fudge."""
+    stn = device.get_devices(area='L2', device_type='LCAV')[0]
+    orig = simulator.ele_control_var(stn)
+    orig_phase = orig['PHASE_DEG']
+    orig_enld = orig['ENLD_MEV']
+    sbst_key = f'SBST_{stn[1:3]}'
+    sbst_phase = simulator.ele_control_var(sbst_key)['PHASE_DEG']
+    l2_phase_init = simulator.ele_control_var('O_L2')['PHASE_DEG']
+
+    if l2_phase_init == 0 and sbst_phase == 0:
+        pytest.skip('O_L2 and SBST both zero — nothing to fold in; test vacuous')
+
+    simulator.cmd(f'set ele {stn} IN_USE = 0')
+
+    cu_energy_fudge(dict(baseline_edes), simulator)
+
+    after = simulator.ele_control_var(stn)
+    assert after['ENLD_MEV'] == pytest.approx(orig_enld, abs=1e-9)
+    assert after['PHASE_DEG'] == pytest.approx(
+        orig_phase + l2_phase_init + sbst_phase, abs=1e-6
+    )
+
+
+def test_fudge_zero_amp_region_bakes_in_station_phases(simulator, baseline_edes):
+    """When a region's expected gain is zero and all its stations are disabled,
+    the early `continue` must not leave stations stranded without the overlay
+    offset — the other region's overlay-zero still runs."""
+    l3_stations = device.get_devices(area='L3', device_type='LCAV')
+    pre = {
+        stn: (
+            simulator.ele_control_var(stn)['PHASE_DEG'],
+            simulator.ele_control_var(f'SBST_{stn[1:3]}')['PHASE_DEG'],
+        )
+        for stn in l3_stations
+    }
+
+    for stn in l3_stations:
+        simulator.cmd(f'set ele {stn} IN_USE = 0')
 
     edes = dict(baseline_edes)
-    edes['L2'] = baseline_edes['L1'] + 1.0
+    edes['L3'] = edes['L2']
 
-    with pytest.raises(ValueError, match='Cannot match L2'):
-        cu_energy_fudge(edes, simulator)
+    cu_energy_fudge(edes, simulator)
+
+    for stn, (orig_phase, sbst_phase) in pre.items():
+        after = simulator.ele_control_var(stn)['PHASE_DEG']
+        assert after == pytest.approx(orig_phase + sbst_phase, abs=1e-6), (
+            f'{stn} phase lost SBST offset through zero-amp early return'
+        )
+    for stn in l3_stations:
+        sbst_key = f'SBST_{stn[1:3]}'
+        assert simulator.ele_control_var(sbst_key)['PHASE_DEG'] == pytest.approx(0.0, abs=1e-9)

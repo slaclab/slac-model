@@ -58,7 +58,8 @@ def cu_energy_match(edes, tao):
     Parameters
     ----------
     edes : dict
-        ``{'L1': float, 'L2': float, 'L3': float}`` — energies in GeV.
+        ``{'L1': float, 'L2': float, 'L3': float}`` — ENDBC1, ENDBC2 and
+        ENDL3 EDES energies in GeV.
         Callers typically build this with a small ``cu_get_edes(line)``
         helper (see the example scripts in ``examples/``).
     tao : pytao.Tao
@@ -95,11 +96,17 @@ def cu_energy_fudge(edes, tao):
     region's total gain matches the EDES values, and push the fudged
     ``ENLD_MEV`` / ``PHASE_DEG`` back into the Bmad model.
 
+    NOTE: Overlays set the element directly, overriding the previous
+    setting. So we need to take into account the L2 Phase and SBST
+    overlays values and then zero them in order to write to the
+    individual KLYS overlays.
+
     Parameters
     ----------
     edes : dict
-        ``{'L1': float, 'L2': float, 'L3': float}`` - energies in GeV,
-        same shape as :func:`cu_energy_match`'s input.
+        ``{'L1': float, 'L2': float, 'L3': float}`` — ENDBC1, ENDBC2 and
+        ENDL3 EDES energies in GeV, same shape as :func:`cu_energy_match`'s
+        input.
     tao : pytao.Tao
         Active Tao instance for the CU_HXR (or compatible) model.
     """
@@ -121,6 +128,25 @@ def cu_energy_fudge(edes, tao):
             key = f'SBST_{stn[1:3]}'
             if key not in sbst_phases:
                 sbst_phases[key] = tao.ele_control_var(key)['PHASE_DEG']
+
+    # Bake the shared O_L2 and SBST_* phase offsets into every station's
+    # own PHASE_DEG before zeroing those overlays. Without this, stations
+    # we don't rewrite in the per-region writeback (disabled stations, or
+    # any station in a region taken by the zero-amplitude early return)
+    # silently lose the overlay contribution to their effective RF phase.
+    tao.cmd("set global lattice_calc_on = F")
+    for region, stations in region_stations.items():
+        l2_phase = l2_phase_init if region == 'L2' else 0
+        for stn in stations:
+            vals = tao.ele_control_var(stn)
+            baked = vals['PHASE_DEG'] + l2_phase + sbst_phases[f'SBST_{stn[1:3]}']
+            tao.cmd(f'set ele {stn} PHASE_DEG = {baked}')
+    tao.cmd('set ele O_L2 PHASE_DEG = 0')
+    for sbst in sbst_phases:
+        tao.cmd(f'set ele {sbst} PHASE_DEG = 0')
+    tao.cmd("set global lattice_calc_on = T")
+    l2_phase_init = 0
+    sbst_phases = {k: 0 for k in sbst_phases}
 
     for region, expected_gain in regions:
         l2_phase = l2_phase_init if region == 'L2' else 0
@@ -147,9 +173,6 @@ def cu_energy_fudge(edes, tao):
         phasF = np.degrees(np.angle(complex_gain_fudged))
 
         logger.debug('%s fudge dF=%0.4g (expected_gain=%s GeV)', region, dF, expected_gain)
-        tao.cmd(f'set ele O_L2 PHASE_DEG = 0')
-        for sbst in sbst_phases:
-            tao.cmd(f'set ele {sbst} PHASE_DEG = 0')
         tao.cmd("set global lattice_calc_on = F")
         for indx, stn in enumerate(stations):
             if not tao.ele_control_var(stn)['IN_USE']:
