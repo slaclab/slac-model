@@ -165,3 +165,30 @@ def test_create_virtual_accelerator_matches_database(simulator, database_records
             and all(accessor in record.getMessage() for accessor in accessors)
             for record in caplog.records
         ), f"Missing-accessor warning not emitted for {name}"
+
+
+LCAV_EXPECTED_FOR_K21_1 = {
+    "KLYS:LI21:11:ENLD":           bmad_actions.KlystronENLDVariable,
+    "KLYS:LI21:11:BEAMCODE1_STAT": bmad_actions.KlystronStatVariable,
+    "KLYS:LI21:11:BEAMCODE2_STAT": bmad_actions.KlystronStatVariable,
+    "KLYS:LI21:11:PHAS":           bmad_actions.KlystronPACTVariable,
+    "KLYS:LI21:11:PDES":           bmad_actions.KlystronPDESVariable,
+    "ACCL:LI21:1:L1S_PDES_DS0":    bmad_actions.KlystronPDESVariable,
+    "ACCL:LI21:1:L1S_PDES_DS1":    bmad_actions.KlystronPDESVariable,
+}
+
+
+def test_lcav_variables_registered_for_k21_1(simulator):
+    """K21_1 (an L1 LCAV station) exposes all 7 mapped PVs with correct classes."""
+    accelerator = factory.create_virtual_accelerator(simulator)
+
+    for pv, expected_class in LCAV_EXPECTED_FOR_K21_1.items():
+        assert pv in accelerator.supported_variables, (
+            f"LCAV PV missing from supported_variables: {pv}"
+        )
+        variable = accelerator.supported_variables[pv]
+        assert type(variable) is expected_class, (
+            f"{pv}: got {type(variable).__name__}, expected {expected_class.__name__}"
+        )
+        assert variable.name == pv
+        assert variable.element_name == "K21_1"
