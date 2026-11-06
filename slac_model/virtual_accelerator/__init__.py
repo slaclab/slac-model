@@ -59,5 +59,14 @@ ACCESSOR_MAPPING = {
         "phase_fbst": "DummyEnumVariable",
         "rf_enable_beamcode1": "CavityMODECFGVariable",
         "rf_enable_beamcode2": "CavityMODECFGVariable"
+    },
+    "LCAV": {
+        "amplitude": "KlystronENLDVariable",
+        "beamcode1": "KlystronStatVariable",
+        "beamcode2": "KlystronStatVariable",
+        "phase": "KlystronPACTVariable",
+        "phase_desired": "KlystronPDESVariable",
+        "phase_desired_beamcode1": "KlystronPDESVariable",
+        "phase_desired_beamcode2": "KlystronPDESVariable",
     }
 }
