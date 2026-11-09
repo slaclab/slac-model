@@ -222,21 +222,25 @@ class KlystronPACTVariable(_ReadbackFromControlMixin, KlystronPDESVariable):
     """
 
 
-class KlystronStatVariable(BmadEnumVariable, WritableActionMixin):
+class KlystronStatVariable(BmadScalarVariable, WritableActionMixin):
     """
-    Action that operates on the status of a klystron which acts on an overlay in Bmad
+    Action that operates on the status of a klystron which acts on an overlay in Bmad.
+    Note: the element_name for this variable should be set for a Bmad overlay element.
 
+    Values other than 1.0 (e.g. 0.0, 4.0 for bypassed/standby beamcodes) are
+    treated as "off" and set the overlay's IN_USE to 0.
     """
 
-    read_only: bool = True
-    options: list[str] = ["0", "1"]
-    default_value: str = "0"
+    read_only: bool = False
+    default_value: float = 0.0
+    description: str = "Klystron on/off status"
 
     def _get(self, simulator: Tao) -> Any:
-        return str(bmad.get_klystron_stat(simulator, self.element_name))
+        return float(simulator.ele(self.element_name).control_vars["IN_USE"])
 
     def _set(self, simulator: Tao, value: Any) -> None:
-        bmad.set_klystron_stat(simulator, self.element_name, int(value))
+        in_use = 1 if value == 1.0 else 0
+        simulator.cmd(f"set ele {self.element_name} IN_USE = {in_use}")
 
 
 class CavityAREQVariable(BmadScalarVariable, WritableActionMixin):

@@ -24,7 +24,7 @@ bpm1: instrument, l = 0, type = "bpm"
 cav1: lcavity, l = 1.0, rf_frequency = 2.856e9, type = "lcavity"
 otr1: instrument, l = 0, type = "screen"
 
-klys_ovl: overlay = {cav1[voltage]: enld_mev, cav1[phi0]: phase_deg / 360},
+klys_ovl: overlay = {cav1[voltage]: enld_mev * 1e6, cav1[phi0]: phase_deg / 360},
   var = {enld_mev, phase_deg, in_use}, type = "overlay"
 
 lat: line = (qf, d, sol1, d, kickh, kickv, d, bnd1, d, bpm1, d, cav1, d, otr1)
