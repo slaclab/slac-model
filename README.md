@@ -79,5 +79,4 @@ va = get_cu_hxr_bmad_va(start_element="OTR2", end_element="END")
 ```
 
 ## Running tests
-
-This repository does not currently include an automated test suite.
+Tests run against LCLS lattice, looking for correct PVs served by the virtual accelerator.
