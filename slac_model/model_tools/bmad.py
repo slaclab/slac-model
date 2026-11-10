@@ -34,7 +34,7 @@ def get_bmad_device_names(tao: Tao):
     # if an element has "#<number>" suffix then it is a split element, remove the suffix -- duplicates will be removed later while preserving order
     elements = [elem.split("#")[0] for elem in elements]
 
-    # if an element matches the klystron segment pattern similar to K21_1D#1, normalize it to the base klystron name without the segment suffix K21_1
+    # if an element matches the klystron segment pattern similar to K21_1D#1, normalize it to the base klystron name without the segment suffix K21_1# defered elements have "type" starting with "@", we ignore these.
     for elem in elements:
         if tao.ele_head(elem)["type"].startswith("@"):
             continue
