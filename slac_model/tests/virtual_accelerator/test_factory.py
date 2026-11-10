@@ -13,7 +13,7 @@ from lume_bmad.model import LUMEBmadModel
 from slac_db import device
 
 from slac_model.models.cu import get_cu_hxr_bmad_model
-from slac_model.virtual_accelerator import ACCESSOR_MAPPING, factory
+from slac_model.virtual_accelerator import ACCESSOR_MAPPING, factory, actions
 
 
 @pytest.fixture(scope="module")
@@ -42,7 +42,7 @@ def database_records(simulator):
     }
     return {
         name: (device.get_attribute(name, "device_type"), device.get_all_accessors(name))
-        for name in device.get_devices(include_inactive=True)
+        for name in device.get_devices(include_inactive=True, beampath="CU_HXR")
         if name in lattice_names
     }
 
@@ -69,25 +69,31 @@ def test_get_simulator_device_names(simulator, database_records):
     assert set(database_records) <= set(names)
 
 
-def test_get_lume_modules(simulator):
-    """Verify that Tao selects the Bmad action module and LUME model class."""
-    assert factory.get_lume_variable_module(simulator) is bmad_actions
-    assert factory.get_lume_model_module(simulator) is LUMEBmadModel
+def test_get_model_and_variable_classes(simulator):
+    """Verify that Tao selects the correct model class and variable classes."""
+    from slac_model.virtual_accelerator.backend_utils import (
+        get_model_class,
+        get_variable_class,
+    )
+    
+    assert get_model_class(simulator) is LUMEBmadModel
+    
+    # Test that we can get variable classes configured for the simulator
+    QuadBCTRL = get_variable_class(simulator, "QuadrupoleBCTRLVariable")
+    assert QuadBCTRL is actions.QuadrupoleBCTRLVariable
+    assert QuadBCTRL._conversion_module is not None
 
 
-@pytest.mark.parametrize(
-    "helper",
-    [
-        factory.get_simulator_device_names,
-        factory.get_lume_variable_module,
-        factory.get_lume_model_module,
-        factory.create_virtual_accelerator,
-    ],
-)
-def test_unsupported_simulator_raises(helper):
-    """Require every simulator-dispatch entry point to reject unknown backends."""
+def test_unsupported_simulator_raises_device_names():
+    """Require device name getter to reject unknown backends."""
     with pytest.raises(ValueError, match="Unsupported simulator type"):
-        helper(object())
+        factory.get_simulator_device_names(object())
+
+
+def test_unsupported_simulator_raises_virtual_accelerator():
+    """Require virtual accelerator factory to reject unknown backends."""
+    with pytest.raises(ValueError, match="Unsupported simulator type"):
+        factory.create_virtual_accelerator(object(), "CU_HXR")
 
 
 @pytest.mark.parametrize(
@@ -95,8 +101,8 @@ def test_unsupported_simulator_raises(helper):
     sorted({name for mapping in ACCESSOR_MAPPING.values() for name in mapping.values()}),
 )
 def test_accessor_mapping_classes_exist(class_name):
-    """Ensure every configured action class is defined, even outside this slice."""
-    assert hasattr(bmad_actions, class_name), f"Missing Bmad action class: {class_name}"
+    """Ensure every configured action class is defined in actions.py."""
+    assert hasattr(actions, class_name), f"Missing action class: {class_name}"
 
 
 def test_create_virtual_accelerator_matches_database(simulator, database_records, caplog):
@@ -116,7 +122,7 @@ def test_create_virtual_accelerator_matches_database(simulator, database_records
                 pv = accessors[accessor]
                 assert pv, f"Empty PV for {name}.{accessor}"
                 assert pv not in expected, f"Duplicate PV in expected variables: {pv}"
-                expected[pv] = (name, getattr(bmad_actions, class_name))
+                expected[pv] = (name, getattr(actions, class_name))
                 covered_types.add(device_type)
             else:
                 missing.setdefault(name, set()).add(accessor)
@@ -126,7 +132,7 @@ def test_create_virtual_accelerator_matches_database(simulator, database_records
     assert {"QUAD", "BPM", "XCOR", "YCOR"} <= covered_types
     assert expected, "No supported CU_HXR PVs found in slac-db"
 
-    accelerator = factory.create_virtual_accelerator(simulator)
+    accelerator = factory.create_virtual_accelerator(simulator, "CU_HXR")
 
     assert isinstance(accelerator, LUMEBmadModel)
     assert accelerator.simulator is simulator
@@ -135,7 +141,7 @@ def test_create_virtual_accelerator_matches_database(simulator, database_records
     actual = {
         pv: variable
         for pv, variable in accelerator.supported_variables.items()
-        if isinstance(variable, (bmad_actions.BmadScalarVariable, bmad_actions.BmadEnumVariable))
+        if isinstance(variable, (actions.ScalarVariable, actions.EnumVariable))
     }
     assert actual.keys() == expected.keys()
     for pv, (element_name, variable_class) in expected.items():
@@ -168,19 +174,19 @@ def test_create_virtual_accelerator_matches_database(simulator, database_records
 
 
 LCAV_EXPECTED_FOR_K21_1 = {
-    "KLYS:LI21:11:ENLD":           bmad_actions.KlystronENLDVariable,
-    "KLYS:LI21:11:BEAMCODE1_STAT": bmad_actions.KlystronStatVariable,
-    "KLYS:LI21:11:BEAMCODE2_STAT": bmad_actions.KlystronStatVariable,
-    "KLYS:LI21:11:PHAS":           bmad_actions.KlystronPACTVariable,
-    "KLYS:LI21:11:PDES":           bmad_actions.KlystronPDESVariable,
-    "ACCL:LI21:1:L1S_PDES_DS0":    bmad_actions.KlystronPDESVariable,
-    "ACCL:LI21:1:L1S_PDES_DS1":    bmad_actions.KlystronPDESVariable,
+    "KLYS:LI21:11:ENLD":           actions.KlystronENLDVariable,
+    "KLYS:LI21:11:BEAMCODE1_STAT": actions.KlystronStatVariable,
+    "KLYS:LI21:11:BEAMCODE2_STAT": actions.KlystronStatVariable,
+    "KLYS:LI21:11:PHAS":           actions.KlystronPACTVariable,
+    "KLYS:LI21:11:PDES":           actions.KlystronPDESVariable,
+    "ACCL:LI21:1:L1S_PDES_DS0":    actions.KlystronPDESVariable,
+    "ACCL:LI21:1:L1S_PDES_DS1":    actions.KlystronPDESVariable,
 }
 
 
 def test_lcav_variables_registered_for_k21_1(simulator):
     """K21_1 (an L1 LCAV station) exposes all 7 mapped PVs with correct classes."""
-    accelerator = factory.create_virtual_accelerator(simulator)
+    accelerator = factory.create_virtual_accelerator(simulator, "CU_HXR")
 
     for pv, expected_class in LCAV_EXPECTED_FOR_K21_1.items():
         assert pv in accelerator.supported_variables, (
