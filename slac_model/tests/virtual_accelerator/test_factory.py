@@ -13,7 +13,7 @@ from lume_bmad.model import LUMEBmadModel
 from slac_db import device
 
 from slac_model.models.cu import get_cu_hxr_bmad_model
-from slac_model.virtual_accelerator import ACCESSOR_MAPPING, bmad_actions, factory
+from slac_model.virtual_accelerator import ACCESSOR_MAPPING, factory
 
 
 @pytest.fixture(scope="module")

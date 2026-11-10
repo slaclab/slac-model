@@ -1,5 +1,3 @@
-import slac_model.virtual_accelerator.bmad_actions as va_actions
-
 # Mapping of device types and accessors to LUME variables
 ACCESSOR_MAPPING = {
     "QUAD": {
