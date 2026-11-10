@@ -6,8 +6,6 @@ virtual accelerator with variables and screen dump locations configured.
 """
 
 import os
-from pytao import Tao
-
 from slac_model.virtual_accelerator.factory import create_virtual_accelerator
 
 def get_cu_hxr_bmad_model(start_element: str, end_element: str):
@@ -26,6 +24,7 @@ def get_cu_hxr_bmad_model(start_element: str, end_element: str):
     Tao
         Instance of the Tao class for the CU_HXR lattice.
     """
+    from pytao import Tao
 
     init_path = os.path.join(os.environ["LCLS_LATTICE"], "bmad/models/cu_hxr/tao.init")
     tao = Tao(f"-init {init_path} -noplot -slice_lattice {start_element}:{end_element}")
@@ -35,6 +34,26 @@ def get_cu_hxr_bmad_model(start_element: str, end_element: str):
     tao.cmd("set ele * field_master = True")
 
     return tao
+
+def get_cu_hxr_cheetah_model(start_element: str, end_element: str):
+    import torch
+    from cheetah.accelerator import Segment, CheetahSimulator
+    from cheetah.particles import ParticleBeam
+
+    segment = Segment.from_lattice_json(
+        os.path.join(os.environ["LCLS_LATTICE"], "cheetah/nc_hxr.json")
+    ).subcell(start_element=start_element.lower(), end_element=end_element.lower())
+
+    # create a default single particle beam at 1 MeV
+    incoming_beam = ParticleBeam(
+        particles = torch.zeros(1,7),
+        energy = torch.tensor([1.0e6]),
+        particle_charges = torch.tensor([1.0]),
+    )
+
+    simulator = CheetahSimulator(segment=segment, incoming_beam=incoming_beam)
+    return simulator
+
 
 def get_cu_hxr_bmad_va(
     start_element="OTR2", 
@@ -59,3 +78,25 @@ def get_cu_hxr_bmad_va(
     tao = get_cu_hxr_bmad_model(start_element=start_element, end_element=end_element)
 
     return create_virtual_accelerator(tao, beampath="CU_HXR")
+
+def get_cu_hxr_cheetah_va(
+    start_element="OTR2", 
+    end_element="END", 
+):
+    """
+    Get the CheetahSimulator virtual accelerator for the CU_HXR lattice from `start_element` to `end_element`.
+
+    Parameters
+    -------------
+    start_element: str, optional
+        The starting element for the model. Default is "OTR2".
+    end_element: str, optional
+        The ending element for the model. Default is "END".
+
+    Returns
+    -------
+    CheetahSimulator
+        Instance of the CheetahSimulator for the CU_HXR lattice.
+    """
+    simulator = get_cu_hxr_cheetah_model(start_element=start_element, end_element=end_element)
+    return create_virtual_accelerator(simulator, beampath="CU_HXR")
