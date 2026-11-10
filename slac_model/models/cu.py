@@ -58,4 +58,4 @@ def get_cu_hxr_bmad_va(
     # get the Tao instance for the CU_HXR lattice from start_element to end_element
     tao = get_cu_hxr_bmad_model(start_element=start_element, end_element=end_element)
 
-    return create_virtual_accelerator(tao)
+    return create_virtual_accelerator(tao, beampath="CU_HXR")

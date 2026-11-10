@@ -43,13 +43,15 @@ def get_lume_model_module(simulator: Any):
     else:
         raise ValueError("Unsupported simulator type")
 
-def create_virtual_accelerator(simulator: Any) -> LUMEModel:
-    """ Create a virtual accelerator instance based on the provided simulator instance 
+def create_virtual_accelerator(simulator: Any, beampath: str) -> LUMEModel:
+    """ Create a virtual accelerator instance based on the provided simulator instance and beampath name
 
     Parameters:
     -----------
     simulator : Any
         The simulator instance (e.g., Tao for BMAD simulations).
+    beampath : str
+        The name of the beampath for which to create the virtual accelerator.
 
     Returns:
     --------
@@ -62,7 +64,7 @@ def create_virtual_accelerator(simulator: Any) -> LUMEModel:
     lume_variable_module = get_lume_variable_module(simulator)
     lume_model_module = get_lume_model_module(simulator)
 
-    known_devices = set(get_devices(include_inactive=True))
+    known_devices = set(get_devices(include_inactive=True, beampath=beampath))
 
     # for each device in the BMAD simulation create the lume variables needed to support that device
     lume_variables = []
