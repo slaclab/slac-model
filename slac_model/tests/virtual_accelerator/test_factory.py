@@ -78,10 +78,14 @@ def test_get_model_and_variable_classes(simulator):
     
     assert get_model_class(simulator) is LUMEBmadModel
     
-    # Test that we can get variable classes configured for the simulator
-    QuadBCTRL = get_variable_class(simulator, "QuadrupoleBCTRLVariable")
-    assert QuadBCTRL is actions.QuadrupoleBCTRLVariable
-    assert QuadBCTRL._conversion_module is not None
+    # Test that we can get variable classes configured for the simulator.
+    # get_variable_class returns a subclass with the conversion module bound per instance.
+    QuadBCTRLSubclass = get_variable_class(simulator, "QuadrupoleBCTRLVariable")
+    assert issubclass(QuadBCTRLSubclass, actions.QuadrupoleBCTRLVariable)
+    
+    # Verify that instances have the conversion module bound
+    var = QuadBCTRLSubclass(name="Q1", element_name="Q1")
+    assert var.get_conversion_module() is not None
 
 
 def test_unsupported_simulator_raises_device_names():
@@ -148,7 +152,9 @@ def test_create_virtual_accelerator_matches_database(simulator, database_records
         variable = actual[pv]
         assert variable.name == pv
         assert variable.element_name == element_name
-        assert type(variable) is variable_class
+        # get_variable_class returns backend-specific subclasses for instance isolation,
+        # so check isinstance instead of exact type match
+        assert isinstance(variable, variable_class)
 
     readings = accelerator.get(list(expected))
     assert readings.keys() == expected.keys()
@@ -193,7 +199,8 @@ def test_lcav_variables_registered_for_k21_1(simulator):
             f"LCAV PV missing from supported_variables: {pv}"
         )
         variable = accelerator.supported_variables[pv]
-        assert type(variable) is expected_class, (
+        # get_variable_class returns backend-specific subclasses for instance isolation
+        assert isinstance(variable, expected_class), (
             f"{pv}: got {type(variable).__name__}, expected {expected_class.__name__}"
         )
         assert variable.name == pv

@@ -40,14 +40,14 @@ def create_virtual_accelerator(simulator: Any, beampath: str) -> LUMEModel:
     """
 
     # get device names and model class for the simulator
-    device_names = get_simulator_device_names(simulator)
+    simulated_device_names = get_simulator_device_names(simulator)
     lume_model_module = get_model_class(simulator)
 
     known_devices = set(get_devices(include_inactive=True, beampath=beampath))
 
     # for each device in the simulation create the lume variables needed to support that device
     lume_variables = []
-    for device_name in device_names:
+    for device_name in simulated_device_names:
         if device_name not in known_devices:
             continue
         device_type = get_device_type(device_name)
@@ -77,7 +77,7 @@ def create_virtual_accelerator(simulator: Any, beampath: str) -> LUMEModel:
             lume_variables.append(_cls(name=pv, element_name=device_name))
             
     virtual_accelerator = lume_model_module(
-        tao=simulator,
+        simulator,
         action_variables=lume_variables,
     )
 

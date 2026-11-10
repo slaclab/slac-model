@@ -4,74 +4,67 @@ This module provides generic action classes that work with any conversion module
 (bmad, cheetah, impact, etc.). Instead of duplicating class definitions for each
 backend, this module defines all classes with configurable conversion modules.
 
+The conversion module is bound per instance (not per class), so different simulator
+backends can coexist without interference. The backend_utils.get_variable_class()
+function handles creating properly configured instances.
+
 Usage:
-    # For bmad backend
-    from slac_model.virtual_accelerator.actions import (
-        QuadrupoleBCTRLVariable,
-        QuadrupoleBACTVariable,
-    )
-    from slac_model.pv_conversion import bmad
-
-    QuadrupoleBCTRLVariable.set_conversion_module(bmad)
+    from slac_model.virtual_accelerator.backend_utils import get_variable_class
     
-    # For cheetah backend
-    from slac_model.pv_conversion import cheetah
-    QuadrupoleBCTRLVariable.set_conversion_module(cheetah)
-
-Alternatively, create backend-specific modules:
-    # cheetah_actions.py
-    from slac_model.virtual_accelerator.actions import (
-        QuadrupoleBCTRLVariable as _QuadrupoleBCTRLVariable,
-    )
-    from slac_model.pv_conversion import cheetah
-
-    _QuadrupoleBCTRLVariable.set_conversion_module(cheetah)
-    QuadrupoleBCTRLVariable = _QuadrupoleBCTRLVariable
+    # For a Tao/Bmad simulator
+    QuadBCTRL = get_variable_class(bmad_simulator, "QuadrupoleBCTRLVariable")
+    var = QuadBCTRL(name="Q1", element_name="Q1")
+    
+    # For a Cheetah simulator
+    QuadBCTRL = get_variable_class(cheetah_simulator, "QuadrupoleBCTRLVariable")
+    var = QuadBCTRL(name="Q1", element_name="Q1")
+    
+    # Each has the correct conversion module bound per instance
 """
 
-from typing import Any, Optional
+from typing import Any
 from abc import ABC
 
 from lume.actions import ReadOnlyActionMixin, WritableActionMixin
-from lume.variables import ScalarVariable, EnumVariable
+from lume.variables import ScalarVariable as LumeScalarVariable
+from lume.variables import EnumVariable as LumeEnumVariable
 
 
 class ConversionModuleMixin(ABC):
-    """Mixin that provides a class-level conversion module reference."""
+    """Mixin that provides instance-level conversion module binding."""
 
-    _conversion_module = None
-
-    @classmethod
-    def set_conversion_module(cls, module: Any) -> None:
-        """Set the conversion module for this variable class.
+    def get_conversion_module(self) -> Any:
+        """Get the conversion module for this instance.
         
-        Args:
-            module: The conversion module (e.g., slac_model.pv_conversion.bmad)
-        """
-        cls._conversion_module = module
-
-    @classmethod
-    def get_conversion_module(cls) -> Any:
-        """Get the conversion module for this variable class.
-        
+        Returns:
+            The instance-level conversion module.
+            
         Raises:
             RuntimeError: If no conversion module has been set.
         """
-        if cls._conversion_module is None:
+        if not hasattr(self, '_instance_conversion_module'):
             raise RuntimeError(
-                f"Conversion module not set for {cls.__name__}. "
-                f"Call {cls.__name__}.set_conversion_module() first."
+                f"Conversion module not set for {type(self).__name__}. "
+                f"Create instances via get_variable_class() for proper backend binding."
             )
-        return cls._conversion_module
+        return self._instance_conversion_module
+
+    def set_instance_conversion_module(self, module: Any) -> None:
+        """Set the instance-level conversion module.
+        
+        Args:
+            module: The conversion module for this instance.
+        """
+        self._instance_conversion_module = module
 
 
-class ScalarVariable(ScalarVariable, ConversionModuleMixin):
+class ScalarVariable(LumeScalarVariable, ConversionModuleMixin):
     """Base scalar variable with conversion module support."""
 
     element_name: str
 
 
-class EnumVariable(EnumVariable, ConversionModuleMixin):
+class EnumVariable(LumeEnumVariable, ConversionModuleMixin):
     """Base enum variable with conversion module support."""
 
     element_name: str

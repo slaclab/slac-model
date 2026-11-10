@@ -2,7 +2,8 @@
 
 This module provides functions to select the appropriate variable classes and
 model classes based on the simulator type. Variable classes are created on-demand
-for each backend using the generic definitions from actions.py.
+for each backend using the generic definitions from actions.py, with conversion
+modules bound per instance to prevent cross-backend interference.
 """
 
 from typing import Any, Type
@@ -49,17 +50,19 @@ def get_variable_class(
     simulator: Any,
     variable_class_name: str,
 ) -> Type[Variable]:
-    """Get a variable class configured for the given simulator backend.
+    """Get a backend-specific subclass for the given simulator.
     
-    This function retrieves the generic variable class from actions.py and
-    configures it with the appropriate conversion module for the simulator backend.
+    This function creates a subclass of the generic variable class that has the
+    conversion module bound per instance. This ensures that variables created for
+    different simulators (e.g., Bmad and Cheetah) don't interfere with each other.
     
     Args:
         simulator: The simulator instance.
         variable_class_name: Name of the variable class to retrieve.
         
     Returns:
-        The variable class, configured with the correct conversion module.
+        A subclass of the generic variable class that automatically binds the
+        conversion module per instance.
         
     Raises:
         ValueError: If simulator type is unsupported.
@@ -69,6 +72,7 @@ def get_variable_class(
     
     backend_config = _get_backend_config(simulator)
     conversion_module = backend_config['conversion_module']
+    backend_name = backend_config['backend_name']
     
     if not hasattr(actions, variable_class_name):
         raise AttributeError(
@@ -76,13 +80,24 @@ def get_variable_class(
             f"slac_model.virtual_accelerator.actions"
         )
     
-    variable_class = getattr(actions, variable_class_name)
+    generic_class = getattr(actions, variable_class_name)
     
-    # Set the conversion module for this variable class
-    if hasattr(variable_class, 'set_conversion_module'):
-        variable_class.set_conversion_module(conversion_module)
+    # Create a backend-specific subclass that automatically injects the conversion module
+    # This ensures instance isolation between different simulators
+    class BackendSpecificVariable(generic_class):
+        """Backend-specific subclass with bound conversion module."""
+        
+        def __init__(self, *args, **kwargs):
+            # Call parent init
+            super().__init__(*args, **kwargs)
+            # Bind the conversion module per instance
+            self.set_instance_conversion_module(conversion_module)
     
-    return variable_class
+    # Preserve the original class name for debugging and introspection
+    BackendSpecificVariable.__name__ = f"{generic_class.__name__}_{backend_name}"
+    BackendSpecificVariable.__qualname__ = f"{generic_class.__qualname__}_{backend_name}"
+    
+    return BackendSpecificVariable
 
 
 def get_model_class(simulator: Any) -> Type[LUMEModel]:
