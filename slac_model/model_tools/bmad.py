@@ -36,6 +36,8 @@ def get_bmad_device_names(tao: Tao):
 
     # if an element matches the klystron segment pattern similar to K21_1D#1, normalize it to the base klystron name without the segment suffix K21_1
     for elem in elements:
+        if tao.ele_head(elem)["type"].startswith("@"):
+            continue
         match = KLYSTRON_PATTERN.match(elem)
         if match:
             normalized_elements.append(
