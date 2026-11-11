@@ -36,10 +36,14 @@ def database_records(simulator):
     """Return database types and accessor-to-PV mappings for lattice devices."""
     # Normalize split elements and klystron segments independently of the
     # factory helper so its output is not used to construct its own reference.
-    lattice_names = {
-        re.sub(r"^(K\d+_\d+)[A-Z]$", r"\1", name.split("#")[0])
-        for name in simulator.lat_list("*", "ele.name")
-    }
+    # Drop deferred elements (Tao type starts with "@") to match the factory,
+    # which does not create variables for hardware that is not installed.
+    indices = simulator.lat_list("*", "ele.ix_ele")
+    lattice_names = set()
+    for name, ix in zip(simulator.lat_list("*", "ele.name"), indices):
+        if simulator.ele_head(int(ix))["type"].startswith("@"):
+            continue
+        lattice_names.add(re.sub(r"^(K\d+_\d+)[A-Z]$", r"\1", name.split("#")[0]))
     return {
         name: (device.get_attribute(name, "device_type"), device.get_all_accessors(name))
         for name in device.get_devices(include_inactive=True)
