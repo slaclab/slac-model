@@ -43,7 +43,25 @@ def _get_backend_config(simulator: Any) -> dict[str, Any]:
             'backend_name': 'bmad',
         }
     else:
+        # Try to detect Cheetah simulator by type name (avoid hard import dependency)
+        try:
+            from lume_cheetah.simulator import CheetahSimulator
+            if isinstance(simulator, CheetahSimulator):
+                from lume_cheetah.model import LUMECheetahModel
+                from slac_model.model_tools.cheetah import get_cheetah_device_names
+                from slac_model.pv_conversion import cheetah
+                
+                return {
+                    'model_class': LUMECheetahModel,
+                    'get_device_names': get_cheetah_device_names,
+                    'conversion_module': cheetah,
+                    'backend_name': 'cheetah',
+                }
+        except ImportError:
+            pass
+        
         raise ValueError(f"Unsupported simulator type: {type(simulator).__name__}")
+
 
 
 def get_variable_class(

@@ -37,23 +37,29 @@ def get_cu_hxr_bmad_model(start_element: str, end_element: str):
 
 def get_cu_hxr_cheetah_model(start_element: str, end_element: str):
     import torch
-    from cheetah.accelerator import Segment, CheetahSimulator
+    from cheetah.accelerator import Segment
     from cheetah.particles import ParticleBeam
+    from lume_cheetah.simulator import CheetahSimulator
 
     segment = Segment.from_lattice_json(
         os.path.join(os.environ["LCLS_LATTICE"], "cheetah/nc_hxr.json")
-    ).subcell(start_element=start_element.lower(), end_element=end_element.lower())
+    )
+    
+    # Handle 'end' to mean the last element in the segment
+    if end_element.lower() == 'end':
+        end_element = 'enddmph_2'
+    
+    segment = segment.subcell(start=start_element.lower(), end=end_element.lower())
 
-    # create a default single particle beam at 1 MeV
-    incoming_beam = ParticleBeam(
+    # Create a default single particle beam at 1 MeV
+    initial_beam = ParticleBeam(
         particles = torch.zeros(1,7),
         energy = torch.tensor([1.0e6]),
         particle_charges = torch.tensor([1.0]),
     )
 
-    simulator = CheetahSimulator(segment=segment, incoming_beam=incoming_beam)
+    simulator = CheetahSimulator(segment=segment, initial_beam_distribution=initial_beam)
     return simulator
-
 
 def get_cu_hxr_bmad_va(
     start_element="OTR2", 
