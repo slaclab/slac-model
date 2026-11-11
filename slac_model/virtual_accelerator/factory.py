@@ -6,13 +6,14 @@ creates virtual accelerator instances based on the provided simulation data and 
 
 import logging
 
-from pytao import Tao
 from typing import Any
 from slac_db.device import get_all_accessors, get_attribute, get_devices
-from slac_model.model_tools.bmad import get_bmad_device_names
-from slac_model.virtual_accelerator import bmad_actions as bmad_actions
-from lume_bmad.model import LUMEBmadModel
 from lume.model import LUMEModel
+from slac_model.virtual_accelerator.backend_utils import (
+    get_variable_class,
+    get_model_class,
+    get_simulator_device_names
+)
 from . import ACCESSOR_MAPPING
 
 logger = logging.getLogger(__name__)
@@ -22,34 +23,15 @@ def get_device_type(device_name: str) -> str:
     """ Get the device type for the given device name from slac-db """
     return get_attribute(device_name, "device_type")
 
-def get_simulator_device_names(simulator: Any):
-    """ get all the slac-db device names for the given simulator instance """
-    if isinstance(simulator, Tao):
-        return get_bmad_device_names(simulator)
-    else:
-        raise ValueError("Unsupported simulator type")
-
-def get_lume_variable_module(simulator: Any):
-    """ Identify the appropriate LUME variable module for the given simulator instance """
-    if isinstance(simulator, Tao):
-        return bmad_actions
-    else:
-        raise ValueError("Unsupported simulator type")
-
-def get_lume_model_module(simulator: Any):
-    """ Identify the appropriate LUME model module for the given simulator instance """
-    if isinstance(simulator, Tao):
-        return LUMEBmadModel
-    else:
-        raise ValueError("Unsupported simulator type")
-
-def create_virtual_accelerator(simulator: Any) -> LUMEModel:
-    """ Create a virtual accelerator instance based on the provided simulator instance 
+def create_virtual_accelerator(simulator: Any, beampath: str) -> LUMEModel:
+    """ Create a virtual accelerator instance based on the provided simulator instance and beampath name
 
     Parameters:
     -----------
     simulator : Any
         The simulator instance (e.g., Tao for BMAD simulations).
+    beampath : str
+        The name of the beampath for which to create the virtual accelerator.
 
     Returns:
     --------
@@ -57,16 +39,15 @@ def create_virtual_accelerator(simulator: Any) -> LUMEModel:
         The virtual accelerator instance based on the simulator.
     """
 
-    # get device names, lume variable module, and lume model module for the simulator
-    device_names = get_simulator_device_names(simulator)
-    lume_variable_module = get_lume_variable_module(simulator)
-    lume_model_module = get_lume_model_module(simulator)
+    # get device names and model class for the simulator
+    simulated_device_names = get_simulator_device_names(simulator)
+    lume_model_module = get_model_class(simulator)
 
-    known_devices = set(get_devices(include_inactive=True))
+    known_devices = set(get_devices(include_inactive=True, beampath=beampath))
 
-    # for each device in the BMAD simulation create the lume variables needed to support that device
+    # for each device in the simulation create the lume variables needed to support that device
     lume_variables = []
-    for device_name in device_names:
+    for device_name in simulated_device_names:
         if device_name not in known_devices:
             continue
         device_type = get_device_type(device_name)
@@ -86,8 +67,8 @@ def create_virtual_accelerator(simulator: Any) -> LUMEModel:
         for accessor, variable_class in accessor_mapping.items():
             if accessor not in device_accessors:
                 continue
-            # get the variable class for the accessor
-            _cls = getattr(lume_variable_module, variable_class)
+            # get the variable class for the accessor, with backend already configured
+            _cls = get_variable_class(simulator, variable_class)
 
             # get pv for the accessor
             pv = device_accessors[accessor]
@@ -96,7 +77,7 @@ def create_virtual_accelerator(simulator: Any) -> LUMEModel:
             lume_variables.append(_cls(name=pv, element_name=device_name))
             
     virtual_accelerator = lume_model_module(
-        tao=simulator,
+        simulator,
         action_variables=lume_variables,
     )
 
