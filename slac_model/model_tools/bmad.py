@@ -22,38 +22,28 @@ def get_bmad_device_names(tao: Tao):
         Ordered element names with slac-db device names.
     """
     elements = tao.lat_list("*", "ele.name")
-
-    # Remove sentinel elements and preserve Tao's unique element IDs to avoid
-    # ambiguous lookups when multiple elements share the same base name.
-    elements = list(
-        dict.fromkeys(elem for elem in elements if elem not in ("BEGINNING", "END"))
-    )
+    indices = tao.lat_list("*", "ele.ix_ele")
 
     normalized_elements = []
-
-    # if an element has "#<number>" suffix then it is a split element, remove the suffix -- duplicates will be removed later while preserving order
-    elements = [elem.split("#")[0] for elem in elements]
-
-    # if an element matches the klystron segment pattern similar to K21_1D#1, normalize it to the base klystron name without the segment suffix K21_1# defered elements have "type" starting with "@", we ignore these.
-    for elem in elements:
-        try:
-            if tao.ele_head(elem)["type"].startswith("@"):
-                continue
-        except Exception:
-            pass
+    for elem, ix in zip(elements, indices):
+        if elem in ("BEGINNING", "END"):
+            continue
+        # Deferred elements (type starts with "@") are placeholders for
+        # hardware not yet installed in the accelerator.
+        if tao.ele_head(int(ix))["type"].startswith("@"):
+            continue
+        # Strip the "#<number>" split suffix; duplicates are removed below.
+        elem = elem.split("#")[0]
         match = KLYSTRON_PATTERN.match(elem)
         if match:
             normalized_elements.append(
                 elem[:-1]
-            )  # remove the segment suffix to get the overlay element name
-
+            )  # klystron segment -> overlay element name
         else:
             normalized_elements.append(elem)
 
     # remove duplicates while preserving order
-    normalized_elements = list(dict.fromkeys(normalized_elements))
-
-    return normalized_elements
+    return list(dict.fromkeys(normalized_elements))
 
 
 def cu_energy_match(edes, tao):
