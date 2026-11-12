@@ -64,17 +64,26 @@ def create_virtual_accelerator(simulator: Any, beampath: str) -> LUMEModel:
             )
 
         # for each accessor in the device type's accessor mapping create the corresponding LUME variable
-        for accessor, variable_class in accessor_mapping.items():
+        for accessor, variable_class_name in accessor_mapping.items():
             if accessor not in device_accessors:
                 continue
-            # get the variable class for the accessor, with backend already configured
-            _cls = get_variable_class(simulator, variable_class)
-
+            
             # get pv for the accessor
             pv = device_accessors[accessor]
-
-            # create the LUME variable for this accessor and add it to the list
-            lume_variables.append(_cls(name=pv, element_name=device_name))
+            
+            try:
+                # get the variable class for the accessor, with backend already configured
+                _cls = get_variable_class(simulator, variable_class_name)
+                # create the LUME variable for this accessor and add it to the list
+                lume_variables.append(_cls(name=pv, element_name=device_name))
+            except AttributeError as e:
+                # Skip this action if backend functions are missing or class doesn't exist
+                logger.warning(
+                    "Skipping variable %s for device %s: %s",
+                    variable_class_name,
+                    device_name,
+                    str(e),
+                )
             
     virtual_accelerator = lume_model_module(
         simulator,

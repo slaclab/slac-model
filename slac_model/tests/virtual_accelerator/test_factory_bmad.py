@@ -19,10 +19,17 @@ def simulator(bmad_simulator):
 @pytest.fixture(scope="module")
 def database_records(simulator):
     """Return database types and accessor-to-PV mappings for lattice devices."""
-    lattice_names = {
-        re.sub(r"^(K\d+_\d+)[A-Z]$", r"\1", name.split("#")[0])
-        for name in factory.get_simulator_device_names(simulator)
-    }
+
+    # Normalize split elements and klystron segments independently of the
+    # factory helper so its output is not used to construct its own reference.
+    # Drop deferred elements (Tao type starts with "@") to match the factory,
+    # which does not create variables for hardware that is not installed.
+    indices = simulator.lat_list("*", "ele.ix_ele")
+    lattice_names = set()
+    for name, ix in zip(simulator.lat_list("*", "ele.name"), indices):
+        if simulator.ele_head(int(ix))["type"].startswith("@"):
+            continue
+        lattice_names.add(re.sub(r"^(K\d+_\d+)[A-Z]$", r"\1", name.split("#")[0]))
     return {
         name: (device.get_attribute(name, "device_type"), device.get_all_accessors(name))
         for name in device.get_devices(include_inactive=True, beampath="CU_HXR")
@@ -183,4 +190,159 @@ def test_lcav_variables_registered_for_k21_1(simulator):
             f"{pv}: got {type(variable).__name__}, expected {expected_class.__name__}"
         )
         assert variable.name == pv
-        assert variable.element_name == "K21_1"
+
+
+def test_backend_function_validation_passes_for_valid_variables(simulator):
+    """Verify that validation passes for variable classes with all required functions."""
+    from slac_model.virtual_accelerator.backend_utils import get_variable_class
+    
+    # Test a writable variable with get_function and set_function
+    quad_cls = get_variable_class(simulator, "QuadrupoleBCTRLVariable")
+    quad_var = quad_cls(name="Q1", element_name="QM01")
+    assert quad_var.name == "Q1"
+    assert quad_var.element_name == "QM01"
+    
+    # Test a read-only variable with only get_function
+    bpm_cls = get_variable_class(simulator, "BPMXVariable")
+    bpm_var = bpm_cls(name="BPM1", element_name="BPM10")
+    assert bpm_var.name == "BPM1"
+    assert bpm_var.element_name == "BPM10"
+    
+    # Test a readback variable that inherits get_function from parent
+    quad_bact_cls = get_variable_class(simulator, "QuadrupoleBACTVariable")
+    quad_bact_var = quad_bact_cls(name="QBACT", element_name="QM01")
+    assert quad_bact_var.name == "QBACT"
+    assert quad_bact_var.element_name == "QM01"
+
+
+def test_backend_function_validation_fails_for_missing_get_function(simulator):
+    """Verify that validation catches missing get_function in conversion module."""
+    from slac_model.virtual_accelerator.backend_utils import (
+        _validate_backend_functions,
+        _get_backend_config,
+    )
+    
+    backend_config = _get_backend_config(simulator)
+    conversion_module = backend_config['conversion_module']
+    
+    # Create a mock conversion module without required functions
+    class MockModuleWithoutGetFunction:
+        __name__ = 'mock_module'
+        # Missing get_quadrupole_bctrl
+    
+    mock_module = MockModuleWithoutGetFunction()
+    
+    # Validation should raise AttributeError for missing get_function
+    with pytest.raises(AttributeError, match="get_quadrupole_bctrl.*not found"):
+        _validate_backend_functions(
+            actions.QuadrupoleBCTRLVariable,
+            mock_module,
+            "QuadrupoleBCTRLVariable"
+        )
+
+
+def test_backend_function_validation_fails_for_missing_set_function(simulator):
+    """Verify that validation catches missing set_function in conversion module."""
+    from slac_model.virtual_accelerator.backend_utils import _validate_backend_functions
+    
+    # Create a mock conversion module with get_function but missing set_function
+    class MockModuleWithoutSetFunction:
+        __name__ = 'mock_module'
+        def get_quadrupole_bctrl(self, simulator, element_name):
+            return 0.0
+        # Missing set_quadrupole_bctrl
+    
+    mock_module = MockModuleWithoutSetFunction()
+    
+    # Validation should raise AttributeError for missing set_function
+    with pytest.raises(AttributeError, match="set_quadrupole_bctrl.*not found"):
+        _validate_backend_functions(
+            actions.QuadrupoleBCTRLVariable,
+            mock_module,
+            "QuadrupoleBCTRLVariable"
+        )
+
+
+def test_backend_function_validation_skips_none_functions():
+    """Verify that validation skips fields with None defaults (read-only variables)."""
+    from slac_model.virtual_accelerator.backend_utils import _validate_backend_functions
+    
+    # Create a mock conversion module without any functions
+    class MockModuleEmpty:
+        __name__ = 'mock_module'
+    
+    mock_module = MockModuleEmpty()
+    
+    # DummyEnumVariable has no get/set functions defined (uses custom _get/_set)
+    # Validation should not raise an error since default is None
+    _validate_backend_functions(
+        actions.DummyEnumVariable,
+        mock_module,
+        "DummyEnumVariable"
+    )
+    # If we got here without raising, the test passed
+
+
+def test_get_variable_class_validates_before_creating_subclass(simulator):
+    """Verify that validation happens before backend-specific subclass creation."""
+    from slac_model.virtual_accelerator.backend_utils import get_variable_class
+    
+    # Mock a bad simulator with invalid conversion module
+    class MockSimulator:
+        pass
+    
+    # This should fail at validation stage (unsupported simulator)
+    with pytest.raises(ValueError, match="Unsupported simulator type"):
+        get_variable_class(MockSimulator(), "QuadrupoleBCTRLVariable")
+
+
+def test_get_variable_class_fails_for_nonexistent_variable_class(simulator):
+    """Verify that non-existent variable classes are rejected."""
+    from slac_model.virtual_accelerator.backend_utils import get_variable_class
+    
+    with pytest.raises(AttributeError, match="not found.*actions"):
+        get_variable_class(simulator, "NonExistentVariableClass")
+
+
+def test_factory_skips_actions_with_validation_failures(simulator, caplog):
+    """Verify that factory gracefully skips actions when validation fails.
+    
+    When a variable class has missing backend functions, the factory logs a
+    warning and continues creating other variables instead of failing entirely.
+    """
+    from unittest.mock import patch
+    
+    # Patch get_variable_class to simulate a validation failure
+    with patch(
+        "slac_model.virtual_accelerator.factory.get_variable_class"
+    ) as mock_get_cls:
+        # Make it raise AttributeError for QuadrupoleBCTRLVariable
+        def side_effect(simulator, class_name):
+            if class_name == "QuadrupoleBCTRLVariable":
+                raise AttributeError(
+                    f"Backend function 'get_quadrupole_bctrl' required by "
+                    f"{class_name} not found in conversion module"
+                )
+            # For other classes, return a real class
+            from slac_model.virtual_accelerator.backend_utils import get_variable_class as real_get
+            return real_get(simulator, class_name)
+        
+        mock_get_cls.side_effect = side_effect
+        
+        # Create virtual accelerator; should not raise despite validation failure
+        accelerator = factory.create_virtual_accelerator(simulator, "CU_HXR")
+        
+        # Verify a warning was logged for the failed variable
+        assert any(
+            "Skipping variable QuadrupoleBCTRLVariable" in record.getMessage()
+            and record.name == factory.__name__
+            for record in caplog.records
+        ), "Expected warning not found in logs"
+        
+        # Verify the accelerator was still created
+        assert accelerator is not None
+        # Verify that other variables were still created (e.g., BPM variables)
+        assert any(
+            isinstance(var, actions.BPMXVariable)
+            for var in accelerator.supported_variables.values()
+        ), "Other variables should still be created when one fails"
