@@ -174,4 +174,84 @@ def cu_energy_fudge(edes, tao):
                 continue
             tao.cmd(f'set ele {stn} ENLD_MEV = {amplF[indx]}')
             tao.cmd(f'set ele {stn} PHASE_DEG = {phasF[indx]}')
-        tao.cmd("set global lattice_calc_on = T")   
+        tao.cmd("set global lattice_calc_on = T")
+
+
+def _apply_live_rf_quad_pvs(tao, beampath, end_device=None):
+    """Fetch live LCAV/QUAD PVs from K21_3 (optionally to ``end_device``) on
+    ``beampath`` and push them into ``tao`` via ``apply_pv_data``. Also
+    disables ``K26_3`` in the model (not an operational station)."""
+    from slac_model.pv_conversion.bmad import apply_pv_data
+    from slac_tools import epics_data
+    import slac_db.device as dev
+    
+    devices = dev.get_devices(beampath=beampath, device_type=['LCAV', 'QUAD'])
+    start = devices.index('K21_3')
+    stop = devices.index(end_device) + 1 if end_device is not None else None
+    devices = devices[start:stop]
+    tao.cmd('set ele K26_3 IN_USE = 0')
+    pvs = dev.get_model_pvs(devices, beampath=beampath)
+    pv_data = epics_data.get_live(pvs)
+    apply_pv_data(tao, pv_data, beampath=beampath)
+
+
+def sxr_dual_energy_match():
+    # Match cu_sxr as we keep cu_hxr energy gain profile
+    from slac_model.models.cu import get_cu_sxr_bmad_model
+
+    logger.info("Generating Cu Linac Beamcode 1 LIVE model")
+    tao = get_cu_sxr_bmad_model(start_element="BEGL2", end_element="END")
+    _apply_live_rf_quad_pvs(tao, 'CU_HXR', end_device='Q50Q2')
+    cu_energy_fudge(cu_get_edes('CU_HXR'), tao)
+
+    #Change energy to SXR. Do not scale magnets
+    logger.info("Updating energy gain from Beamcode 2")
+    tao.cmd('set ele BEGINNING:ENDCLTH_1 field_master=True')
+    _apply_live_rf_quad_pvs(tao, 'CU_SXR')
+    cu_energy_fudge(cu_get_edes('CU_SXR'), tao)
+
+    # match
+    beta_match(tao, 'WS32B', 'q_LTUS', '1:4', '1:5')
+    return tao
+
+
+def beta_match(tao, data, var, data_range, var_range):
+    match_cmds = [
+        f'show lat {data} -attr E_TOT',
+        'veto var *',
+        'veto dat *@*',
+        f'use data {data}[{data_range}]',
+        f'use var {var}[{var_range}]',
+        'set global n_opti_cycles = 912',
+        f'set data {data}|meas = {data}|design',
+        f'show data {data}',
+    ]
+    for cmd in match_cmds:
+        tao.cmd(cmd)
+    logger.info('beta_match starting optimizer')
+    tao.cmd('run')
+    
+def show_var(tao, tao_variable,  write_bdes = False):
+    from slac_model.pv_conversion.bmad import get_quadrupole_bctrl
+    var = tao.var_v1_array(tao_variable)['data']
+    for line in var:
+        quad = line['ele_name']
+        bdes = get_quadrupole_bctrl(tao,quad)
+        device =  tao.ele_head(quad)['alias']
+        logger.info("%s %s BDES:%7.2f", quad, device, bdes)
+        if write_bdes:
+            epics.caput(device + ':BCTRL', bdes)
+        
+
+def cu_get_edes(beampath):
+    import epics
+
+    L1_edes = epics.caget('BEND:LI21:231:EDES')
+    L2_edes = epics.caget('BEND:LI24:790:EDES')
+    L3_edes = None
+    if beampath == 'CU_HXR':
+        L3_edes = epics.caget('BEND:DMPH:400:EDES')
+    if beampath == 'CU_SXR':
+        L3_edes = epics.caget('BEND:DMPS:400:EDES')
+    return {'L1': L1_edes, 'L2': L2_edes, 'L3': L3_edes}
+
