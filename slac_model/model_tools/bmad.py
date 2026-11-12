@@ -240,6 +240,8 @@ def show_var(tao, tao_variable,  write_bdes = False):
         device =  tao.ele_head(quad)['alias']
         logger.info("%s %s BDES:%7.2f", quad, device, bdes)
         if write_bdes:
+            import epics
+
             epics.caput(device + ':BCTRL', bdes)
         
 
