@@ -1,5 +1,6 @@
 """Bmad (pytao `Tao`) accessor functions for reading/writing element PV-equivalent values."""
 
+import logging
 from functools import partial, wraps
 from typing import Any, Callable, Optional
 
@@ -8,6 +9,8 @@ from pytao import Tao
 
 from . import _screen_common
 from ._screen_common import histogram_screen_image
+
+logger = logging.getLogger(__name__)
 
 def validate_element(element_type: str):
     def decorator(func):
@@ -263,3 +266,59 @@ get_klystron_stat, set_klystron_stat = _make_overlay_funcs(
     to_val=lambda b: 0 if b else 1,
     from_val=_klystron_stat_from_pv,
 )
+
+
+def apply_pv_data(simulator: Tao, pv_data: dict[str, Any], beampath: str) -> None:
+    """Push a ``pv_name -> value`` dict directly into a Tao instance.
+
+    Equivalent to building a virtual accelerator and calling ``model.set(pv_data)``,
+    but skips the up-front read sweep that ``LUMEBmadModel`` performs when it
+    registers every action variable. Resolves each PV to its ``(element, accessor)``
+    pair via slac-db + the VA's ``ACCESSOR_MAPPING``, instantiates the matching
+    action variable (which already carries this module's unit conversions), and
+    dispatches ``variable._set``. All writes are fenced with
+    ``lattice_calc_on = F/T`` so Tao retracks once at the end.
+
+    PVs not covered by ``ACCESSOR_MAPPING`` or absent from slac-db for ``beampath``
+    are skipped with a debug log. Readback PVs (e.g. QUAD ``bact``) are also
+    skipped silently so a round-trip EPICS snapshot can be fed in verbatim.
+    """
+    from slac_db.device import get_all_accessors, get_devices
+    from slac_model.virtual_accelerator import ACCESSOR_MAPPING
+    from slac_model.virtual_accelerator.backend_utils import (
+        get_simulator_device_names,
+        get_variable_class,
+    )
+    from slac_model.virtual_accelerator.factory import get_device_type
+
+    sim_devices = get_simulator_device_names(simulator)
+    known = set(get_devices(include_inactive=True, beampath=beampath))
+
+    pv_index: dict[str, tuple[str, str]] = {}
+    for dev_name in sim_devices:
+        if dev_name not in known:
+            continue
+        mapping = ACCESSOR_MAPPING.get(get_device_type(dev_name), {})
+        if not mapping:
+            continue
+        accessors = get_all_accessors(dev_name)
+        for accessor, var_cls_name in mapping.items():
+            pv = accessors.get(accessor)
+            if pv is not None:
+                pv_index[pv] = (dev_name, var_cls_name)
+
+    simulator.cmd("set global lattice_calc_on = F")
+    try:
+        for pv, value in pv_data.items():
+            match = pv_index.get(pv)
+            if match is None:
+                logger.debug("apply_pv_data: no mapping for PV %s", pv)
+                continue
+            dev_name, var_cls_name = match
+            _cls = get_variable_class(simulator, var_cls_name)
+            var = _cls(name=pv, element_name=dev_name)
+            if var.read_only:
+                continue
+            var._set(simulator, value)
+    finally:
+        simulator.cmd("set global lattice_calc_on = T")
