@@ -12,6 +12,7 @@ def get_cheetah_device_names(simulator: CheetahSimulator) -> list[str]:
 
     Normalizes Cheetah element names to match slac-db conventions:
     - Converts to uppercase
+    - Skips marker and drift elements (not physical devices)
     - Removes duplicate elements
     - Normalizes klystron segment names to base names (e.g., K21_1A -> K21_1)
 
@@ -25,14 +26,20 @@ def get_cheetah_device_names(simulator: CheetahSimulator) -> list[str]:
     list[str]
         Ordered element names normalized to slac-db conventions.
     """
-    # Extract and uppercase all element names
-    elements = [element.name.upper() for element in simulator.segment.elements]
-
     normalized_elements = []
 
-    # Normalize klystron segment names: remove the segment suffix (A-Z) to get the base name
-    # This matches the pattern of K21_1A, K21_1B, etc. -> K21_1
-    for elem in elements:
+    # Iterate through elements and normalize, skipping markers and drifts
+    for element in simulator.segment.elements:
+        # Skip marker and drift elements (not physical devices)
+        # Check by class name to avoid import issues
+        elem_type = type(element).__name__
+        if elem_type in ("Marker", "Drift"):
+            continue
+            
+        elem = element.name.upper()
+        
+        # Normalize klystron segment names: remove the segment suffix (A-Z) to get the base name
+        # This matches the pattern of K21_1A, K21_1B, etc. -> K21_1
         match = KLYSTRON_PATTERN.match(elem)
         if match:
             # Remove the segment suffix (last character) to get the base klystron name

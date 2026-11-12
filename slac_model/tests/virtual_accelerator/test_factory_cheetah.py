@@ -8,7 +8,8 @@ from slac_model.models.cu import get_cu_hxr_cheetah_va
 from lume_cheetah.model import LUMECheetahModel
 from slac_db import device
 
-from slac_model.virtual_accelerator import ACCESSOR_MAPPING, factory, actions
+from slac_model.virtual_accelerator import ACCESSOR_MAPPING, factory
+from slac_model.virtual_accelerator import torch_actions as actions  # Use torch_actions for Cheetah
 from slac_model.tests.virtual_accelerator.conftest import HAS_CHEETAH
 
 # Skip entire module if Cheetah is not available

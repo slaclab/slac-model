@@ -1,25 +1,23 @@
-"""Generic lume `Variable` subclasses for virtual accelerator elements.
+"""Generic lume `Variable` subclasses for non-torch simulator backends.
 
-This module provides generic action classes that work with any conversion module
-(bmad, cheetah, impact, etc.). Instead of duplicating class definitions for each
-backend, this module defines all classes with configurable conversion modules.
-
-The conversion module is bound per instance (not per class), so different simulator
-backends can coexist without interference. The backend_utils.get_variable_class()
-function handles creating properly configured instances.
+This module provides action classes based on ScalarVariable from lume that work
+with Bmad/Tao, Impact, and other non-torch simulators. These variables use
+standard numpy-based operations and can be instantiated with a conversion module
+bound per instance.
 
 Usage:
-    from slac_model.virtual_accelerator.backend_utils import get_variable_class
+    from slac_model.virtual_accelerator.actions import QuadrupoleBCTRLVariable
+    from slac_model.virtual_accelerator import backend_utils
     
-    # For a Tao/Bmad simulator
-    QuadBCTRL = get_variable_class(bmad_simulator, "QuadrupoleBCTRLVariable")
-    var = QuadBCTRL(name="Q1", element_name="Q1")
+    # Create a simulator instance
+    sim = create_simulator()
     
-    # For a Cheetah simulator
-    QuadBCTRL = get_variable_class(cheetah_simulator, "QuadrupoleBCTRLVariable")
-    var = QuadBCTRL(name="Q1", element_name="Q1")
+    # Create and configure a variable
+    quad_var = QuadrupoleBCTRLVariable(name="Q1", element_name="Q1")
+    quad_var.set_instance_conversion_module(backend_utils.conversion_module)
     
-    # Each has the correct conversion module bound per instance
+    # Now you can get/set values
+    value = quad_var._get(sim)
 """
 
 from typing import Any, Optional
@@ -374,4 +372,3 @@ class CavityMODECFGVariable(EnumVariable, WritableActionMixin):
     default_value: str = "ACCEL_STDBY"
     get_function: str = "get_cavity_modecfg"
     set_function: str = "set_cavity_modecfg"
-
