@@ -66,7 +66,8 @@ def get_variable_class(
         
     Raises:
         ValueError: If simulator type is unsupported.
-        AttributeError: If variable class doesn't exist in actions.py.
+        AttributeError: If variable class doesn't exist in actions.py or 
+                       required backend functions are missing.
     """
     from slac_model.virtual_accelerator import actions
     
@@ -82,15 +83,14 @@ def get_variable_class(
     
     generic_class = getattr(actions, variable_class_name)
     
-    # Create a backend-specific subclass that automatically injects the conversion module
-    # This ensures instance isolation between different simulators
+    # Validate that backend functions exist before creating the subclass
+    _validate_backend_functions(generic_class, conversion_module, variable_class_name)
+    
+    # Create a backend-specific subclass that binds the conversion module at instantiation
     class BackendSpecificVariable(generic_class):
         """Backend-specific subclass with bound conversion module."""
-        
         def __init__(self, *args, **kwargs):
-            # Call parent init
             super().__init__(*args, **kwargs)
-            # Bind the conversion module per instance
             self.set_instance_conversion_module(conversion_module)
     
     # Preserve the original class name for debugging and introspection
@@ -114,6 +114,43 @@ def get_model_class(simulator: Any) -> Type[LUMEModel]:
     """
     backend_config = _get_backend_config(simulator)
     return backend_config['model_class']
+
+
+def _validate_backend_functions(
+    variable_class: Type[Variable],
+    conversion_module: Any,
+    variable_class_name: str,
+) -> None:
+    """Validate that required backend functions exist in the conversion module.
+    
+    Args:
+        variable_class: The variable class to check.
+        conversion_module: The backend conversion module.
+        variable_class_name: Name of the variable class (for error messages).
+        
+    Raises:
+        AttributeError: If required functions don't exist in the conversion module.
+    """
+    # Check for get_function in model_fields
+    if hasattr(variable_class, 'model_fields'):
+        get_field = variable_class.model_fields.get('get_function')
+        if get_field and get_field.default:
+            get_func_name = get_field.default
+            if not hasattr(conversion_module, get_func_name):
+                raise AttributeError(
+                    f"Backend function '{get_func_name}' required by {variable_class_name} "
+                    f"not found in conversion module {conversion_module.__name__}"
+                )
+        
+        # Check for set_function in model_fields
+        set_field = variable_class.model_fields.get('set_function')
+        if set_field and set_field.default:
+            set_func_name = set_field.default
+            if not hasattr(conversion_module, set_func_name):
+                raise AttributeError(
+                    f"Backend function '{set_func_name}' required by {variable_class_name} "
+                    f"not found in conversion module {conversion_module.__name__}"
+                )
 
 
 def get_simulator_device_names(simulator: Any) -> list[str]:
