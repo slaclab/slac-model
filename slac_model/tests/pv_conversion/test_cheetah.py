@@ -10,6 +10,7 @@ pytest.importorskip("lume_cheetah")
 import torch
 from cheetah.accelerator import (
     BPM,
+    Cavity,
     Drift,
     HorizontalCorrector,
     Quadrupole,
@@ -73,14 +74,67 @@ def test_validate_element_raises_for_wrong_type(simulator):
         cheetah_cnv.get_quadrupole_bctrl(simulator, "D1")
 
 
+@pytest.mark.parametrize("element_name", ["Q1", "q1"])
+def test_get_energy_is_case_insensitive(simulator, element_name):
+    assert cheetah_cnv._get_energy(simulator, element_name) == pytest.approx(ENERGY)
+
+
+@pytest.mark.parametrize("empty_energies", [False, True])
+def test_missing_energy_raises_instead_of_using_initial_energy(simulator, empty_energies):
+    if empty_energies:
+        simulator.energies.clear()
+    else:
+        del simulator.energies["Q1"]
+
+    with pytest.raises(ValueError, match="Q1"):
+        cheetah_cnv._get_energy(simulator, "Q1")
+    with pytest.raises(ValueError, match="Q1"):
+        cheetah_cnv.get_quadrupole_bctrl(simulator, "Q1")
+    with pytest.raises(ValueError, match="Q1"):
+        cheetah_cnv.set_quadrupole_bctrl(simulator, "Q1", 0.75)
+
+
+@pytest.mark.parametrize("energy", [1e6, [1e6], [1e6, 2e6]])
+def test_energy_and_magnet_conversion_after_acceleration(energy):
+    energy = torch.tensor(energy)
+    segment = Segment(
+        [
+            Cavity(
+                name="c1",
+                length=torch.tensor(0.1),
+                voltage=torch.tensor(1e6),
+                phase=torch.tensor(0.0),
+                frequency=torch.tensor(2.856e9),
+            ),
+            Quadrupole(name="q1", length=torch.tensor(0.5), k1=torch.tensor(1.0)),
+        ]
+    )
+    beam = ParticleBeam(
+        particles=torch.zeros(1, 7),
+        energy=energy,
+        particle_charges=torch.tensor([1.0]),
+    )
+    simulator = CheetahSimulator(segment=segment, initial_beam_distribution=beam)
+    incoming_energy = energy.mean().item()
+    accelerated_energy = incoming_energy + 1e6
+
+    assert cheetah_cnv._get_energy(simulator, "C1") == pytest.approx(incoming_energy)
+    assert cheetah_cnv._get_energy(simulator, "Q1") == pytest.approx(accelerated_energy)
+    expected = 0.5 * cheetah_cnv.get_magnetic_rigidity(accelerated_energy)
+    assert cheetah_cnv.get_quadrupole_bctrl(simulator, "Q1") == pytest.approx(expected)
+    cheetah_cnv.set_quadrupole_bctrl(simulator, "Q1", 0.75)
+    expected_k1 = 0.75 / cheetah_cnv.get_magnetic_rigidity(accelerated_energy) / 0.5
+    assert simulator.segment.q1.k1 == pytest.approx(expected_k1)
+
+
 class TestQuadrupole:
     def test_get_bctrl(self, simulator):
         expected = 1.0 * 0.5 * cheetah_cnv.get_magnetic_rigidity(ENERGY)
         assert math.isclose(cheetah_cnv.get_quadrupole_bctrl(simulator, "Q1"), expected, rel_tol=1e-6)
 
     def test_set_get_roundtrip(self, simulator):
-        cheetah_cnv.set_quadrupole_bctrl(simulator, "Q1", 0.75)
-        assert math.isclose(cheetah_cnv.get_quadrupole_bctrl(simulator, "Q1"), 0.75, abs_tol=1e-8)
+        cheetah_cnv.set_quadrupole_bctrl(simulator, "Q1", torch.tensor(0.75))
+        assert math.isclose(cheetah_cnv.get_quadrupole_bctrl(simulator, "Q1"), torch.tensor(0.75), abs_tol=1e-6)
 
     def test_bact_is_bctrl_alias(self):
         assert cheetah_cnv.get_quadrupole_bact is cheetah_cnv.get_quadrupole_bctrl
@@ -92,8 +146,8 @@ class TestSolenoid:
         assert math.isclose(cheetah_cnv.get_solenoid_bctrl(simulator, "SOL1"), expected, rel_tol=1e-6)
 
     def test_set_get_roundtrip(self, simulator):
-        cheetah_cnv.set_solenoid_bctrl(simulator, "SOL1", 2.0)
-        assert math.isclose(cheetah_cnv.get_solenoid_bctrl(simulator, "SOL1"), 2.0, rel_tol=1e-6)
+        cheetah_cnv.set_solenoid_bctrl(simulator, "SOL1", torch.tensor(2.0))
+        assert math.isclose(cheetah_cnv.get_solenoid_bctrl(simulator, "SOL1"), torch.tensor(2.0), rel_tol=1e-6)
 
     def test_bact_is_bctrl_alias(self):
         assert cheetah_cnv.get_solenoid_bact is cheetah_cnv.get_solenoid_bctrl
@@ -105,11 +159,11 @@ class TestSolenoid:
 
 class TestKicker:
     def test_set_get_roundtrip(self, simulator):
-        cheetah_cnv.set_kicker_bctrl(simulator, "KICK1", 0.1)
-        assert math.isclose(cheetah_cnv.get_kicker_bctrl(simulator, "KICK1"), 0.1, rel_tol=1e-6)
+        cheetah_cnv.set_hkicker_bctrl(simulator, "KICK1", torch.tensor(0.1))
+        assert math.isclose(cheetah_cnv.get_hkicker_bctrl(simulator, "KICK1"), torch.tensor(0.1), rel_tol=1e-6)
 
     def test_bact_is_bctrl_alias(self):
-        assert cheetah_cnv.get_kicker_bact is cheetah_cnv.get_kicker_bctrl
+        assert cheetah_cnv.get_hkicker_bact is cheetah_cnv.get_hkicker_bctrl
 
 
 class TestBPM:

@@ -220,6 +220,16 @@ class TestKlystron:
         with pytest.raises(ValueError):
             bmad_cnv.set_klystron_stat(simulator, "KLYS_OVL", 5)
 
+    def test_stat_boundary_values(self, simulator):
+        """Verify stat handles boundary values 0 and 1 correctly."""
+        # Test 0 (off)
+        bmad_cnv.set_klystron_stat(simulator, "KLYS_OVL", 0)
+        assert bmad_cnv.get_klystron_stat(simulator, "KLYS_OVL") == 0.0
+
+        # Test 1 (on)
+        bmad_cnv.set_klystron_stat(simulator, "KLYS_OVL", 1)
+        assert bmad_cnv.get_klystron_stat(simulator, "KLYS_OVL") == 1.0
+
 
 class TestScreenImage:
     def test_get_screen_image_in_beam_mode(self, simulator):
