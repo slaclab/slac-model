@@ -169,11 +169,6 @@ class _VKickerBACTVariableMixin(_ReadbackFromControlMixin):
     pass
 
 
-class _StatusVariableMixin(_ReadbackFromControlMixin):
-    """Mixin for device status variables."""
-    get_function: str = "get_status"
-
-
 class _BminVariableMixin(_ReadbackFromControlMixin):
     """Mixin for minimum field strength variables."""
     unit: str = ""

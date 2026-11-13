@@ -38,7 +38,6 @@ from slac_model.virtual_accelerator._actions_base import (
     _HKickerBACTVariableMixin,
     _VKickerBCTRLVariableMixin,
     _VKickerBACTVariableMixin,
-    _StatusVariableMixin,
     _BminVariableMixin,
     _BmaxVariableMixin,
     _ControlStateVariableMixin,
@@ -117,16 +116,6 @@ class VKickerBCTRLVariable(ScalarVariable, _VKickerBCTRLVariableMixin):
 
 class VKickerBACTVariable(VKickerBCTRLVariable, _VKickerBACTVariableMixin):
     """Action that operates on the BACT property of Vertical Kicker magnets"""
-
-
-# ============================================================================
-# Status Variables
-# ============================================================================
-
-
-class StatusVariable(ScalarVariable, _StatusVariableMixin):
-    """Action that operates on the status of a device (e.g. STATCTRLSUB.T)"""
-
 
 # ============================================================================
 # Limit Variables
