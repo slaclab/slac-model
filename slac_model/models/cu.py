@@ -1,10 +1,6 @@
 """Build Tao and lume-bmad virtual accelerator instances for the CU_HXR and
 CU_SXR lattices.
 
-Provides `get_cu_hxr_bmad_model` / `get_cu_sxr_bmad_model` to construct a
-sliced Tao instance for a lattice segment, and `get_cu_hxr_bmad_va` /
-`get_cu_sxr_bmad_va` to wrap it in a `LUMEBmadModel` virtual accelerator
-with variables and screen dump locations configured.
 """
 
 import os
@@ -112,6 +108,7 @@ def get_cu_sxr_bmad_model(start_element: str, end_element: str):
     Tao
         Instance of the Tao class for the CU_SXR lattice.
     """
+    from pytao import Tao
 
     init_path = os.path.join(os.environ["LCLS_LATTICE"], "bmad/models/cu_sxr/tao.init")
     tao = Tao(f"-init {init_path} -noplot -slice_lattice {start_element}:{end_element}")
