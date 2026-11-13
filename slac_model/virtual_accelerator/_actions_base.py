@@ -169,94 +169,46 @@ class _VKickerBACTVariableMixin(_ReadbackFromControlMixin):
     pass
 
 
-class _StatusVariableMixin(ReadOnlyActionMixin):
+class _StatusVariableMixin(_ReadbackFromControlMixin):
     """Mixin for device status variables."""
-    read_only: bool = True
-
-    def _get(self, simulator: Any) -> Any:
-        return super(ReadOnlyActionMixin, self)._get(simulator)
-
-    def _set(self, simulator: Any, value: Any) -> None:
-        raise RuntimeError(f"{self.name} is read-only")
+    get_function: str = "get_status"
 
 
-class _BminVariableMixin(ReadOnlyActionMixin):
+class _BminVariableMixin(_ReadbackFromControlMixin):
     """Mixin for minimum field strength variables."""
-    read_only: bool = True
     unit: str = ""
     get_function: str = "get_bmin"
 
-    def _get(self, simulator: Any) -> Any:
-        return super(ReadOnlyActionMixin, self)._get(simulator)
 
-    def _set(self, simulator: Any, value: Any) -> None:
-        raise RuntimeError(f"{self.name} is read-only")
-
-
-class _BmaxVariableMixin(ReadOnlyActionMixin):
+class _BmaxVariableMixin(_ReadbackFromControlMixin):
     """Mixin for maximum field strength variables."""
-    read_only: bool = True
     unit: str = ""
     get_function: str = "get_bmax"
 
-    def _get(self, simulator: Any) -> Any:
-        return super(ReadOnlyActionMixin, self)._get(simulator)
 
-    def _set(self, simulator: Any, value: Any) -> None:
-        raise RuntimeError(f"{self.name} is read-only")
-
-
-class _ControlStateVariableMixin(ReadOnlyActionMixin):
+class _ControlStateVariableMixin(_ReadbackFromControlMixin):
     """Mixin for control state enum variables."""
-    read_only: bool = True
     options: list[str] = ["Local", "Remote", "Off"]
     default_value: str = "Off"
     get_function: str = "get_control_state"
 
-    def _get(self, simulator: Any) -> Any:
-        return super(ReadOnlyActionMixin, self)._get(simulator)
 
-    def _set(self, simulator: Any, value: Any) -> None:
-        raise RuntimeError(f"{self.name} is read-only")
-
-
-class _BPMXVariableMixin(ReadOnlyActionMixin):
+class _BPMXVariableMixin(_ReadbackFromControlMixin):
     """Mixin for BPM X position variables."""
-    read_only: bool = True
     unit: str = "m"
     get_function: str = "get_bpm_x"
 
-    def _get(self, simulator: Any) -> Any:
-        return super(ReadOnlyActionMixin, self)._get(simulator)
 
-    def _set(self, simulator: Any, value: Any) -> None:
-        raise RuntimeError(f"{self.name} is read-only")
-
-
-class _BPMYVariableMixin(ReadOnlyActionMixin):
+class _BPMYVariableMixin(_ReadbackFromControlMixin):
     """Mixin for BPM Y position variables."""
-    read_only: bool = True
     unit: str = "m"
     get_function: str = "get_bpm_y"
 
-    def _get(self, simulator: Any) -> Any:
-        return super(ReadOnlyActionMixin, self)._get(simulator)
 
-    def _set(self, simulator: Any, value: Any) -> None:
-        raise RuntimeError(f"{self.name} is read-only")
-
-
-class _BPMTMITDummyVariableMixin(ReadOnlyActionMixin):
+class _BPMTMITDummyVariableMixin(_ReadbackFromControlMixin):
     """Mixin for BPM TMIT (total intensity) variables."""
-    read_only: bool = True
     unit: str = ""
     get_function: str = "get_bpm_tmit"
-
-    def _get(self, simulator: Any) -> Any:
-        return super(ReadOnlyActionMixin, self)._get(simulator)
-
-    def _set(self, simulator: Any, value: Any) -> None:
-        raise RuntimeError(f"{self.name} is read-only")
 
 
 class _KlystronENLDVariableMixin(WritableActionMixin):
