@@ -159,11 +159,11 @@ class TestSolenoid:
 
 class TestKicker:
     def test_set_get_roundtrip(self, simulator):
-        cheetah_cnv.set_kicker_bctrl(simulator, "KICK1", torch.tensor(0.1))
-        assert math.isclose(cheetah_cnv.get_kicker_bctrl(simulator, "KICK1"), torch.tensor(0.1), rel_tol=1e-6)
+        cheetah_cnv.set_hkicker_bctrl(simulator, "KICK1", torch.tensor(0.1))
+        assert math.isclose(cheetah_cnv.get_hkicker_bctrl(simulator, "KICK1"), torch.tensor(0.1), rel_tol=1e-6)
 
     def test_bact_is_bctrl_alias(self):
-        assert cheetah_cnv.get_kicker_bact is cheetah_cnv.get_kicker_bctrl
+        assert cheetah_cnv.get_hkicker_bact is cheetah_cnv.get_hkicker_bctrl
 
 
 class TestBPM:
