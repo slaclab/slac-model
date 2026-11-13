@@ -161,6 +161,7 @@ def get_screen_resolution(simulator, element_name: str, pixel_size=None) -> torc
 def get_cavity_modecfg(simulator, element_name: str) -> str:
 	return "ACCEL_STDBY"
 
+# TODO: implement set_cavity_modecfg
 
 def get_screen_pneumatic(simulator, element_name: str) -> float:
 	return 1.0 if bool(_get_element(simulator, element_name).is_active) else 0.0
