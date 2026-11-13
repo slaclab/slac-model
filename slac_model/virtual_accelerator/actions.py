@@ -22,7 +22,7 @@ Usage:
     # Each has the correct conversion module bound per instance
 """
 
-from typing import Any
+from typing import Any, Optional
 from abc import ABC
 
 from lume.actions import ReadOnlyActionMixin, WritableActionMixin
@@ -30,8 +30,9 @@ from lume.variables import ScalarVariable as LumeScalarVariable
 from lume.variables import EnumVariable as LumeEnumVariable
 
 
-class ConversionModuleMixin(ABC):
+class AgnosticSimulatorMixin(ABC):
     """Mixin that provides instance-level conversion module binding."""
+    element_name: str
 
     def get_conversion_module(self) -> Any:
         """Get the conversion module for this instance.
@@ -57,17 +58,31 @@ class ConversionModuleMixin(ABC):
         """
         self._instance_conversion_module = module
 
+    def _get(self, simulator: Any) -> Any:
+        get_func_name = getattr(self, 'get_function', None)
+        if get_func_name is None:
+            raise NotImplementedError(
+                f"{type(self).__name__} must implement _get() or define get_function"
+            )
+        module = self.get_conversion_module()
+        return getattr(module, get_func_name)(simulator, self.element_name)
 
-class ScalarVariable(LumeScalarVariable, ConversionModuleMixin):
+    def _set(self, simulator: Any, value: Any) -> None:
+        set_func_name = getattr(self, 'set_function', None)
+        if set_func_name is None:
+            raise NotImplementedError(
+                f"{type(self).__name__} must implement _set() or define set_function"
+            )
+        module = self.get_conversion_module()
+        return getattr(module, set_func_name)(simulator, self.element_name, value)
+
+
+class ScalarVariable(LumeScalarVariable, AgnosticSimulatorMixin):
     """Base scalar variable with conversion module support."""
 
-    element_name: str
 
-
-class EnumVariable(LumeEnumVariable, ConversionModuleMixin):
+class EnumVariable(LumeEnumVariable, AgnosticSimulatorMixin):
     """Base enum variable with conversion module support."""
-
-    element_name: str
 
 
 class _ReadbackFromControlMixin(ReadOnlyActionMixin):
@@ -92,18 +107,12 @@ class QuadrupoleBCTRLVariable(ScalarVariable, WritableActionMixin):
     """Action that operates on the BCTRL/BDES property of Quadrupoles"""
 
     read_only: bool = False
-    unit: str = "kG"
-
-    def _get(self, simulator: Any) -> Any:
-        module = self.get_conversion_module()
-        return module.get_quadrupole_bctrl(simulator, self.element_name)
-
-    def _set(self, simulator: Any, value: Any) -> None:
-        module = self.get_conversion_module()
-        module.set_quadrupole_bctrl(simulator, self.element_name, value)
+    unit: str = "kG-m"
+    get_function: Optional[str] = "get_quadrupole_bctrl"
+    set_function: Optional[str] = "set_quadrupole_bctrl"
 
 
-class QuadrupoleBACTVariable(_ReadbackFromControlMixin, QuadrupoleBCTRLVariable):
+class QuadrupoleBACTVariable(QuadrupoleBCTRLVariable, _ReadbackFromControlMixin):
     """Action that operates on the BACT property of Quadrupoles"""
 
 
@@ -114,19 +123,11 @@ class QuadrupoleBACTVariable(_ReadbackFromControlMixin, QuadrupoleBCTRLVariable)
 
 class SolenoidBCTRLVariable(ScalarVariable, WritableActionMixin):
     """Action that operates on the BCTRL/BDES property of Solenoids"""
+    unit: str = "kG-m"
+    get_function: str = "get_solenoid_bctrl"
+    set_function: str = "set_solenoid_bctrl"
 
-    conversion_name: str = "solenoid"
-
-    def _get(self, simulator: Any) -> Any:
-        module = self.get_conversion_module()
-        return module.get_solenoid_bctrl(simulator, self.element_name)
-
-    def _set(self, simulator: Any, value: Any) -> None:
-        module = self.get_conversion_module()
-        module.set_solenoid_bctrl(simulator, self.element_name, value)
-
-
-class SolenoidBACTVariable(_ReadbackFromControlMixin, SolenoidBCTRLVariable):
+class SolenoidBACTVariable(SolenoidBCTRLVariable, _ReadbackFromControlMixin):
     """Action that operates on the BACT property of Solenoids"""
 
 
@@ -137,20 +138,12 @@ class SolenoidBACTVariable(_ReadbackFromControlMixin, SolenoidBCTRLVariable):
 
 class SBendBCTRLVariable(ScalarVariable, WritableActionMixin):
     """Action that operates on the BCTRL/BDES property of SBends"""
-
-    read_only: bool = False
     unit: str = "GeV/c"
-
-    def _get(self, simulator: Any) -> Any:
-        module = self.get_conversion_module()
-        return module.get_sbend_bctrl(simulator, self.element_name)
-
-    def _set(self, simulator: Any, value: Any) -> None:
-        module = self.get_conversion_module()
-        module.set_sbend_bctrl(simulator, self.element_name, value)
+    get_function: str = "get_sbend_bctrl"
+    set_function: str = "set_sbend_bctrl"
 
 
-class SBendBACTVariable(_ReadbackFromControlMixin, SBendBCTRLVariable):
+class SBendBACTVariable(SBendBCTRLVariable, _ReadbackFromControlMixin):
     """Action that operates on the BACT property of SBends"""
 
 
@@ -161,17 +154,12 @@ class SBendBACTVariable(_ReadbackFromControlMixin, SBendBCTRLVariable):
 
 class HKickerBCTRLVariable(ScalarVariable, WritableActionMixin):
     """Action that operates on the BCTRL/BDES property of Horizontal Kicker magnets"""
-
-    def _get(self, simulator: Any) -> Any:
-        module = self.get_conversion_module()
-        return module.get_hkicker_bctrl(simulator, self.element_name)
-
-    def _set(self, simulator: Any, value: Any) -> None:
-        module = self.get_conversion_module()
-        module.set_hkicker_bctrl(simulator, self.element_name, value)
+    unit: str = "kG"
+    get_function: str = "get_hkicker_bctrl"
+    set_function: str = "set_hkicker_bctrl"
 
 
-class HKickerBACTVariable(_ReadbackFromControlMixin, HKickerBCTRLVariable):
+class HKickerBACTVariable(HKickerBCTRLVariable, _ReadbackFromControlMixin):
     """Action that operates on the BACT property of Horizontal Kicker magnets"""
 
 
@@ -182,17 +170,12 @@ class HKickerBACTVariable(_ReadbackFromControlMixin, HKickerBCTRLVariable):
 
 class VKickerBCTRLVariable(ScalarVariable, WritableActionMixin):
     """Action that operates on the BCTRL/BDES property of Vertical Kicker magnets"""
-
-    def _get(self, simulator: Any) -> Any:
-        module = self.get_conversion_module()
-        return module.get_vkicker_bctrl(simulator, self.element_name)
-
-    def _set(self, simulator: Any, value: Any) -> None:
-        module = self.get_conversion_module()
-        module.set_vkicker_bctrl(simulator, self.element_name, value)
+    unit: str = "kG"
+    get_function: str = "get_vkicker_bctrl"
+    set_function: str = "set_vkicker_bctrl"
 
 
-class VKickerBACTVariable(_ReadbackFromControlMixin, VKickerBCTRLVariable):
+class VKickerBACTVariable(VKickerBCTRLVariable, _ReadbackFromControlMixin):
     """Action that operates on the BACT property of Vertical Kicker magnets"""
 
 
@@ -258,22 +241,14 @@ class BPMXVariable(ScalarVariable, ReadOnlyActionMixin):
     """Action that operates on the X position of a BPM"""
 
     unit: str = "mm"
-    read_only: bool = True
-
-    def _get(self, simulator: Any) -> Any:
-        module = self.get_conversion_module()
-        return module.get_bpm_x(simulator, self.element_name)
+    get_function: str = "get_bpm_x"
 
 
 class BPMYVariable(ScalarVariable, ReadOnlyActionMixin):
     """Action that operates on the Y position of a BPM"""
 
     unit: str = "mm"
-    read_only: bool = True
-
-    def _get(self, simulator: Any) -> Any:
-        module = self.get_conversion_module()
-        return module.get_bpm_y(simulator, self.element_name)
+    get_function: str = "get_bpm_y"
 
 
 class BPMTMITDummyVariable(ScalarVariable, ReadOnlyActionMixin):
@@ -298,14 +273,8 @@ class KlystronENLDVariable(ScalarVariable, WritableActionMixin):
     """
 
     unit: str = "MeV"
-
-    def _get(self, simulator: Any) -> Any:
-        module = self.get_conversion_module()
-        return module.get_klystron_enld(simulator, self.element_name)
-
-    def _set(self, simulator: Any, value: Any) -> None:
-        module = self.get_conversion_module()
-        module.set_klystron_enld(simulator, self.element_name, value)
+    get_function: str = "get_klystron_enld"
+    set_function: str = "set_klystron_enld"
 
 
 class KlystronPDESVariable(ScalarVariable, WritableActionMixin):
@@ -314,17 +283,11 @@ class KlystronPDESVariable(ScalarVariable, WritableActionMixin):
     """
 
     unit: str = "degrees"
-
-    def _get(self, simulator: Any) -> Any:
-        module = self.get_conversion_module()
-        return module.get_klystron_pdes(simulator, self.element_name)
-
-    def _set(self, simulator: Any, value: Any) -> None:
-        module = self.get_conversion_module()
-        module.set_klystron_pdes(simulator, self.element_name, value)
+    get_function: str = "get_klystron_pdes"
+    set_function: str = "set_klystron_pdes"
 
 
-class KlystronPACTVariable(_ReadbackFromControlMixin, KlystronPDESVariable):
+class KlystronPACTVariable(KlystronPDESVariable, _ReadbackFromControlMixin):
     """
     Action that operates on the actual phase of a klystron which acts on an overlay.
     """
@@ -362,17 +325,11 @@ class CavityAREQVariable(ScalarVariable, WritableActionMixin):
     """
 
     unit: str = "MV"
-
-    def _get(self, simulator: Any) -> Any:
-        module = self.get_conversion_module()
-        return module.get_cavity_areq(simulator, self.element_name)
-
-    def _set(self, simulator: Any, value: Any) -> None:
-        module = self.get_conversion_module()
-        module.set_cavity_areq(simulator, self.element_name, value)
+    get_function: str = "get_cavity_areq"
+    set_function: str = "set_cavity_areq"
 
 
-class CavityAREQReadbackVariable(_ReadbackFromControlMixin, CavityAREQVariable):
+class CavityAREQReadbackVariable(CavityAREQVariable, _ReadbackFromControlMixin):
     """Read-only variant of cavity amplitude request variable."""
 
 
@@ -382,17 +339,11 @@ class CavityPREQVariable(ScalarVariable, WritableActionMixin):
     """
 
     unit: str = "degrees"
-
-    def _get(self, simulator: Any) -> Any:
-        module = self.get_conversion_module()
-        return module.get_cavity_preq(simulator, self.element_name)
-
-    def _set(self, simulator: Any, value: Any) -> None:
-        module = self.get_conversion_module()
-        module.set_cavity_preq(simulator, self.element_name, value)
+    get_function: str = "get_cavity_preq"
+    set_function: str = "set_cavity_preq"
 
 
-class CavityPREQReadbackVariable(_ReadbackFromControlMixin, CavityPREQVariable):
+class CavityPREQReadbackVariable(CavityPREQVariable, _ReadbackFromControlMixin):
     """Read-only variant of cavity phase request variable."""
 
 
@@ -421,11 +372,6 @@ class CavityMODECFGVariable(EnumVariable, WritableActionMixin):
 
     options: list[str] = ["Disable", "ACCEL", "STDBY", "ACCEL_STDBY"]
     default_value: str = "ACCEL_STDBY"
+    get_function: str = "get_cavity_modecfg"
+    set_function: str = "set_cavity_modecfg"
 
-    def _get(self, simulator: Any) -> Any:
-        module = self.get_conversion_module()
-        return module.get_cavity_modecfg(simulator, self.element_name)
-
-    def _set(self, simulator: Any, value: Any) -> None:
-        module = self.get_conversion_module()
-        module.set_cavity_modecfg(simulator, self.element_name, value)
