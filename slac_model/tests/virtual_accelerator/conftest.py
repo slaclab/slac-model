@@ -15,7 +15,7 @@ from slac_model.models.cu import get_cu_hxr_bmad_model
 # Try to import Cheetah backend (optional)
 try:
     from lume_cheetah.model import LUMECheetahModel
-    from slac_model.models.cu import get_cu_hxr_cheetah_model
+    from slac_model.models.cu import get_cu_hxr_cheetah_model, get_cu_hxr_cheetah_va
     HAS_CHEETAH = True
 except ImportError:
     HAS_CHEETAH = False
@@ -50,3 +50,23 @@ def cheetah_simulator():
         pytest.skip("Set LCLS_LATTICE to run the CU_HXR integration tests")
     
     return get_cu_hxr_cheetah_model(start_element="otr2", end_element="end")
+
+
+@pytest.fixture(scope="module")
+def cheetah_va():
+    """Load the Cheetah virtual accelerator for CU_HXR.
+    
+    Shared across multiple tests to avoid expensive VA instantiation.
+    This fixture is module-scoped to reuse the same VA instance across tests
+    that need to verify VA behavior (e.g., checking variable types, PV mappings).
+    
+    Skip if Cheetah is not available.
+    """
+    if not HAS_CHEETAH:
+        pytest.skip("Cheetah not available")
+    
+    lattice_root = os.environ.get("LCLS_LATTICE")
+    if not lattice_root:
+        pytest.skip("Set LCLS_LATTICE to run the CU_HXR integration tests")
+    
+    return get_cu_hxr_cheetah_va()

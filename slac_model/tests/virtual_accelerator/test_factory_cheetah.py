@@ -88,7 +88,7 @@ def test_cheetah_device_names(simulator):
 
 
 
-def test_create_virtual_accelerator_matches_database(simulator, database_records, caplog):
+def test_create_virtual_accelerator_matches_database(simulator, database_records, cheetah_va, caplog):
     """Compare generated PV variables with Cheetah-supported CU_HXR records.
 
     Expected PV names come from slac-db (excluding klystrons), while supported
@@ -114,7 +114,7 @@ def test_create_virtual_accelerator_matches_database(simulator, database_records
     assert {"QUAD", "BPM", "XCOR", "YCOR"} <= covered_types
     assert expected, "No supported CU_HXR PVs found in slac-db for Cheetah"
 
-    accelerator = get_cu_hxr_cheetah_va()
+    accelerator = cheetah_va
 
     assert isinstance(accelerator, LUMECheetahModel)
     actual = {
@@ -137,9 +137,9 @@ def test_create_virtual_accelerator_matches_database(simulator, database_records
     assert readings.keys() == expected.keys()
 
 
-def test_no_klystron_variables_in_cheetah(simulator):
+def test_no_klystron_variables_in_cheetah(simulator, cheetah_va):
     """Verify that klystron PVs are not created in Cheetah backend."""
-    accelerator = get_cu_hxr_cheetah_va()
+    accelerator = cheetah_va
     
     klystron_pvs = [
         "KLYS:LI21:11:ENLD",
@@ -155,7 +155,7 @@ def test_no_klystron_variables_in_cheetah(simulator):
         )
 
 
-def test_cheetah_variables_return_torch_tensors(simulator):
+def test_cheetah_variables_return_torch_tensors(simulator, cheetah_va):
     """Verify that Cheetah variables return torch.Tensor, not floats.
     
     This is a key difference between Cheetah (torch) and Bmad (numpy) backends.
@@ -164,7 +164,7 @@ def test_cheetah_variables_return_torch_tensors(simulator):
     """
     import torch
     
-    accelerator = get_cu_hxr_cheetah_va()
+    accelerator = cheetah_va
     
     # Get some scalar variables from the accelerator
     scalar_vars = {
