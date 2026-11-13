@@ -216,7 +216,7 @@ class CavityPREQReadbackVariable(CavityPREQVariable, _CavityPREQReadbackVariable
     """Read-only variant of cavity phase request variable."""
 
 
-class DummyEnumVariable(EnumVariable, _DummyEnumVariableMixin):
+class DummyEnumVariable(_DummyEnumVariableMixin, EnumVariable):
     """
     Dummy variable for testing purposes. This variable does not correspond to any real element or property.
     It is used to test the behavior of the model when a variable is requested that does not exist in the model.
