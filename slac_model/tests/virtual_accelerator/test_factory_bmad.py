@@ -4,10 +4,19 @@ import re
 
 import pytest
 
-from lume_bmad.model import LUMEBmadModel
 from slac_db import device
 
 from slac_model.virtual_accelerator import ACCESSOR_MAPPING, factory, actions
+
+# Import HAS_BMAD to skip entire module if Bmad not available
+from slac_model.tests.virtual_accelerator.conftest import HAS_BMAD
+
+pytestmark = pytest.mark.skipif(not HAS_BMAD, reason="Bmad not available")
+
+try:
+    from lume_bmad.model import LUMEBmadModel
+except ImportError:
+    pass
 
 
 @pytest.fixture(scope="module")

@@ -10,7 +10,6 @@ Conversion modules are bound per instance to prevent cross-backend interference.
 """
 
 from typing import Any, Type
-from pytao import Tao
 from lume.model import LUMEModel
 from lume.variables import Variable
 
@@ -35,40 +34,49 @@ def _get_backend_config(simulator: Any) -> dict[str, Any]:
     Raises:
         ValueError: If the simulator type is not supported.
     """
-    if isinstance(simulator, Tao):
-        from lume_bmad.model import LUMEBmadModel
-        from slac_model.model_tools.bmad import get_bmad_device_names
-        from slac_model.pv_conversion import bmad
-        from slac_model.virtual_accelerator import actions
-        
-        return {
-            'model_class': LUMEBmadModel,
-            'get_device_names': get_bmad_device_names,
-            'conversion_module': bmad,
-            'actions_module': actions,
-            'backend_name': 'bmad',
-        }
-    else:
-        # Try to detect Cheetah simulator by type name (avoid hard import dependency)
-        try:
-            from lume_cheetah.simulator import CheetahSimulator
-            if isinstance(simulator, CheetahSimulator):
-                from lume_cheetah.model import LUMECheetahModel
-                from slac_model.model_tools.cheetah import get_cheetah_device_names
-                from slac_model.pv_conversion import cheetah
-                from slac_model.virtual_accelerator import torch_actions
-                
-                return {
-                    'model_class': LUMECheetahModel,
-                    'get_device_names': get_cheetah_device_names,
-                    'conversion_module': cheetah,
-                    'actions_module': torch_actions,
-                    'backend_name': 'cheetah',
-                }
-        except ImportError:
-            pass
-        
-        raise ValueError(f"Unsupported simulator type: {type(simulator).__name__}")
+    # Try Bmad/Tao backend first (lazy import to make it optional)
+    try:
+        from pytao import Tao
+        if isinstance(simulator, Tao):
+            from lume_bmad.model import LUMEBmadModel
+            from slac_model.model_tools.bmad import get_bmad_device_names
+            from slac_model.pv_conversion import bmad
+            from slac_model.virtual_accelerator import actions
+            
+            return {
+                'model_class': LUMEBmadModel,
+                'get_device_names': get_bmad_device_names,
+                'conversion_module': bmad,
+                'actions_module': actions,
+                'backend_name': 'bmad',
+            }
+    except ImportError:
+        pass
+    
+    # Try Cheetah backend (lazy import to make it optional)
+    try:
+        from lume_cheetah.simulator import CheetahSimulator
+        if isinstance(simulator, CheetahSimulator):
+            from lume_cheetah.model import LUMECheetahModel
+            from slac_model.model_tools.cheetah import get_cheetah_device_names
+            from slac_model.pv_conversion import cheetah
+            from slac_model.virtual_accelerator import torch_actions
+            
+            return {
+                'model_class': LUMECheetahModel,
+                'get_device_names': get_cheetah_device_names,
+                'conversion_module': cheetah,
+                'actions_module': torch_actions,
+                'backend_name': 'cheetah',
+            }
+    except ImportError:
+        pass
+    
+    raise ValueError(
+        f"Unsupported simulator type: {type(simulator).__name__}. "
+        "This could mean neither Bmad nor Cheetah backends are available, "
+        "or the simulator is not an instance of a known backend."
+    )
 
 
 

@@ -5,12 +5,13 @@ from pathlib import Path
 
 import pytest
 
-pytest.importorskip("pytao")
-pytest.importorskip("lume_bmad")
-
-from lume_bmad.model import LUMEBmadModel
-
-from slac_model.models.cu import get_cu_hxr_bmad_model, get_cu_hxr_bmad_va
+# Try to import Bmad backend (optional)
+try:
+    from lume_bmad.model import LUMEBmadModel
+    from slac_model.models.cu import get_cu_hxr_bmad_model, get_cu_hxr_bmad_va
+    HAS_BMAD = True
+except ImportError:
+    HAS_BMAD = False
 
 # Try to import Cheetah backend (optional)
 try:
@@ -28,6 +29,9 @@ def bmad_simulator():
     An unset lattice root skips these tests; a configured but invalid root fails
     so configuration errors are not mistaken for unavailable optional data.
     """
+    if not HAS_BMAD:
+        pytest.skip("Bmad not available")
+    
     lattice_root = os.environ.get("LCLS_LATTICE")
     if not lattice_root:
         pytest.skip("Set LCLS_LATTICE to run the CU_HXR integration tests")
