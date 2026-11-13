@@ -275,12 +275,12 @@ get_klystron_stat, set_klystron_stat = _make_overlay_funcs(
 
 def get_bmin(simulator: Tao, element_name: str) -> float:
     """Get minimum field strength for a magnet (dummy value for simulation)."""
-    return -10.0
+    return -100.0
 
 
 def get_bmax(simulator: Tao, element_name: str) -> float:
     """Get maximum field strength for a magnet (dummy value for simulation)."""
-    return 10.0
+    return 100.0
 
 
 def get_control_state(simulator: Tao, element_name: str) -> str:

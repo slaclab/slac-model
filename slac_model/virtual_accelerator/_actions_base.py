@@ -183,7 +183,7 @@ class _StatusVariableMixin(ReadOnlyActionMixin):
 class _BminVariableMixin(ReadOnlyActionMixin):
     """Mixin for minimum field strength variables."""
     read_only: bool = True
-    unit: str = "T"
+    unit: str = ""
     get_function: str = "get_bmin"
 
     def _get(self, simulator: Any) -> Any:
@@ -196,7 +196,7 @@ class _BminVariableMixin(ReadOnlyActionMixin):
 class _BmaxVariableMixin(ReadOnlyActionMixin):
     """Mixin for maximum field strength variables."""
     read_only: bool = True
-    unit: str = "T"
+    unit: str = ""
     get_function: str = "get_bmax"
 
     def _get(self, simulator: Any) -> Any:
