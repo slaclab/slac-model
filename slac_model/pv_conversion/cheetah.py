@@ -120,21 +120,6 @@ def get_bpm_y(simulator, element_name: str) -> torch.Tensor:
 	# BPM reading is [batch, 2]
 	return reading[..., 1] * 1e3
 
-
-@validate_element(element_type="bpm")
-def get_bpm_tmit(simulator, element_name: str) -> torch.Tensor:
-	"""Get total intensity (TMIT) from BPM.
-	
-	Returns the total beam charge at the BPM location in nC.
-	"""
-	element = _get_element(simulator, element_name)
-	beam = element.get_read_beam()
-	# Get the number of particles and convert to bunch charge (nC)
-	# Typical bunch has ~1e10 electrons -> ~1.6 nC
-	num_particles = beam.num_particles if hasattr(beam, 'num_particles') else 1.0
-	return torch.tensor(num_particles * 1.6e-9, dtype=torch.float32) * 1e9  # in nC
-
-
 @validate_element(element_type="transversedeflectingcavity")
 def get_cavity_areq(simulator, element_name: str) -> torch.Tensor:
 	return _get_element(simulator, element_name).voltage / 1e6
