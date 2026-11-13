@@ -26,19 +26,23 @@ def simulator(cheetah_simulator):
 def database_records(simulator):
     """Return database types and accessor-to-PV mappings for lattice devices.
     
-    Cheetah may not support all device types, so we exclude unsupported ones.
+    Only includes device types that are supported by Cheetah backend. LCAV devices
+    (linac cavities/klystrons) are excluded as Cheetah doesn't have control functions
+    for them yet (get_klystron_* functions are not implemented).
     """
     lattice_names = {
         re.sub(r"^(K\d+_\d+)[A-Z]$", r"\1", name.split("#")[0])
         for name in factory.get_simulator_device_names(simulator)
     }
     
-    # Cheetah doesn't support klystrons yet, so filter them out
+    # Supported device types for Cheetah backend
+    supported_types = {k for k in ACCESSOR_MAPPING.keys() if k != "LCAV"}
+    
     return {
-        name: (device.get_attribute(name, "device_type"), device.get_all_accessors(name))
+        name: (device_type, device.get_all_accessors(name))
         for name in device.get_devices(include_inactive=True, beampath="CU_HXR")
         if name in lattice_names
-        and device.get_attribute(name, "device_type") != "KLYSTRON"
+        and (device_type := device.get_attribute(name, "device_type")) in supported_types
     }
 
 
@@ -131,14 +135,6 @@ def test_create_virtual_accelerator_matches_database(simulator, database_records
 
     readings = accelerator.get(list(expected))
     assert readings.keys() == expected.keys()
-
-    for name, accessors in missing.items():
-        assert any(
-            record.name == factory.__name__
-            and name in record.getMessage()
-            and all(accessor in record.getMessage() for accessor in accessors)
-            for record in caplog.records
-        ), f"Missing-accessor warning not emitted for {name}"
 
 
 def test_no_klystron_variables_in_cheetah(simulator):

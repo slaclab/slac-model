@@ -6,6 +6,8 @@ virtual accelerator with variables and screen dump locations configured.
 """
 
 import os
+import logging
+import warnings
 from slac_model.virtual_accelerator.factory import create_virtual_accelerator
 
 def get_cu_hxr_bmad_model(start_element: str, end_element: str):
@@ -80,10 +82,17 @@ def get_cu_hxr_bmad_va(
     LUMEBmadModel
         Instance of the LUMEBmadModel for the CU_HXR lattice.
     """
-    # get the Tao instance for the CU_HXR lattice from start_element to end_element
-    tao = get_cu_hxr_bmad_model(start_element=start_element, end_element=end_element)
-
-    return create_virtual_accelerator(tao, beampath="CU_HXR")
+    # Suppress factory warnings during VA creation
+    factory_logger = logging.getLogger("slac_model.virtual_accelerator.factory")
+    original_level = factory_logger.level
+    factory_logger.setLevel(logging.ERROR)
+    
+    try:
+        # get the Tao instance for the CU_HXR lattice from start_element to end_element
+        tao = get_cu_hxr_bmad_model(start_element=start_element, end_element=end_element)
+        return create_virtual_accelerator(tao, beampath="CU_HXR")
+    finally:
+        factory_logger.setLevel(original_level)
 
 def get_cu_hxr_cheetah_va(
     start_element="OTR2", 
@@ -104,5 +113,13 @@ def get_cu_hxr_cheetah_va(
     CheetahSimulator
         Instance of the CheetahSimulator for the CU_HXR lattice.
     """
-    simulator = get_cu_hxr_cheetah_model(start_element=start_element, end_element=end_element)
-    return create_virtual_accelerator(simulator, beampath="CU_HXR")
+    # Suppress factory warnings during VA creation
+    factory_logger = logging.getLogger("slac_model.virtual_accelerator.factory")
+    original_level = factory_logger.level
+    factory_logger.setLevel(logging.ERROR)
+    
+    try:
+        simulator = get_cu_hxr_cheetah_model(start_element=start_element, end_element=end_element)
+        return create_virtual_accelerator(simulator, beampath="CU_HXR")
+    finally:
+        factory_logger.setLevel(original_level)

@@ -286,3 +286,10 @@ def get_bmax(simulator: Tao, element_name: str) -> float:
 def get_control_state(simulator: Tao, element_name: str) -> str:
     """Get control state of a magnet (dummy value: always 'Remote')."""
     return "Remote"
+
+def get_bpm_tmit(simulator: Tao, element_name: str) -> float:
+    """Get total intensity (TMIT) from BPM.
+    
+    Returns dummy value for total beam charge in nC.
+    """
+    return 1.0
