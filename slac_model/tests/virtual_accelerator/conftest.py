@@ -10,7 +10,7 @@ pytest.importorskip("lume_bmad")
 
 from lume_bmad.model import LUMEBmadModel
 
-from slac_model.models.cu import get_cu_hxr_bmad_model
+from slac_model.models.cu import get_cu_hxr_bmad_model, get_cu_hxr_bmad_va
 
 # Try to import Cheetah backend (optional)
 try:
@@ -70,3 +70,16 @@ def cheetah_va():
         pytest.skip("Set LCLS_LATTICE to run the CU_HXR integration tests")
     
     return get_cu_hxr_cheetah_va()
+
+
+@pytest.fixture(scope="module")
+def bmad_va():
+    """Load the Bmad virtual accelerator for CU_HXR.
+    
+    Shared across multiple tests to avoid expensive VA instantiation.
+    This fixture is module-scoped to reuse the same VA instance across tests
+    that need to verify VA behavior (e.g., checking variable types, PV mappings,
+    LCAV device support).
+    
+    """
+    return get_cu_hxr_bmad_va()

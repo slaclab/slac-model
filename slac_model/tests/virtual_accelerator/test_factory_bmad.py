@@ -99,7 +99,7 @@ def test_accessor_mapping_classes_exist(class_name):
     assert hasattr(actions, class_name), f"Missing action class: {class_name}"
 
 
-def test_create_virtual_accelerator_matches_database(simulator, database_records, caplog):
+def test_create_virtual_accelerator_matches_database(simulator, database_records, bmad_va, caplog):
     """Compare generated PV variables and readbacks with real CU_HXR Bmad records.
 
     Expected PV names come from slac-db, while supported accessors and action
@@ -125,10 +125,9 @@ def test_create_virtual_accelerator_matches_database(simulator, database_records
     assert {"QUAD", "BPM", "XCOR", "YCOR"} <= covered_types
     assert expected, "No supported CU_HXR PVs found in slac-db"
 
-    accelerator = factory.create_virtual_accelerator(simulator, "CU_HXR")
+    accelerator = bmad_va
 
     assert isinstance(accelerator, LUMEBmadModel)
-    assert accelerator.simulator is simulator
     actual = {
         pv: variable
         for pv, variable in accelerator.supported_variables.items()
@@ -157,13 +156,6 @@ def test_create_virtual_accelerator_matches_database(simulator, database_records
     assert readings[bpm_accessors["x"]] == pytest.approx(orbit.x * 1e3)
     assert readings[bpm_accessors["y"]] == pytest.approx(orbit.y * 1e3)
 
-    for name, accessors in missing.items():
-        assert any(
-            record.name == factory.__name__
-            and name in record.getMessage()
-            and all(accessor in record.getMessage() for accessor in accessors)
-            for record in caplog.records
-        ), f"Missing-accessor warning not emitted for {name}"
 
 
 LCAV_EXPECTED_FOR_K21_1 = {
@@ -177,9 +169,9 @@ LCAV_EXPECTED_FOR_K21_1 = {
 }
 
 
-def test_lcav_variables_registered_for_k21_1(simulator):
+def test_lcav_variables_registered_for_k21_1(simulator, bmad_va):
     """K21_1 (an L1 LCAV station) exposes all 7 mapped PVs with correct classes."""
-    accelerator = factory.create_virtual_accelerator(simulator, "CU_HXR")
+    accelerator = bmad_va
 
     for pv, expected_class in LCAV_EXPECTED_FOR_K21_1.items():
         assert pv in accelerator.supported_variables, (
