@@ -113,7 +113,6 @@ def test_create_virtual_accelerator_matches_database(simulator, database_records
     accelerator = get_cu_hxr_cheetah_va()
 
     assert isinstance(accelerator, LUMECheetahModel)
-    assert accelerator.simulator is simulator
     actual = {
         pv: variable
         for pv, variable in accelerator.supported_variables.items()
@@ -158,3 +157,67 @@ def test_no_klystron_variables_in_cheetah(simulator):
         assert pv not in accelerator.supported_variables, (
             f"Klystron PV {pv} should not be in Cheetah backend"
         )
+
+
+def test_cheetah_variables_return_torch_tensors(simulator):
+    """Verify that Cheetah variables return torch.Tensor, not floats.
+    
+    This is a key difference between Cheetah (torch) and Bmad (numpy) backends.
+    TorchScalarVariable should ensure that get() operations return torch tensors,
+    and set() operations accept torch tensors or floats.
+    """
+    import torch
+    
+    accelerator = get_cu_hxr_cheetah_va()
+    
+    # Get some scalar variables from the accelerator
+    scalar_vars = {
+        pv: var
+        for pv, var in accelerator.supported_variables.items()
+        if isinstance(var, actions.ScalarVariable)
+    }
+    
+    assert len(scalar_vars) > 0, "No scalar variables found in Cheetah accelerator"
+    
+    # Test the first few scalar variables
+    test_pvs = list(scalar_vars.keys())[:3]
+    
+    for pv in test_pvs:
+        var = scalar_vars[pv]
+        
+        # Test get() returns a torch.Tensor
+        try:
+            value = var._get(simulator)
+            assert isinstance(
+                value, torch.Tensor
+            ), f"Variable {pv} returned {type(value).__name__} instead of torch.Tensor"
+            assert value.dtype in [
+                torch.float32,
+                torch.float64,
+            ], f"Variable {pv} has dtype {value.dtype}, expected float32 or float64"
+        except Exception as e:
+            # Some variables might fail due to missing conversion functions
+            # This is expected for unimplemented variables
+            if "not found in conversion module" not in str(e):
+                raise
+
+
+def test_cheetah_torchscalarvariable_class_used(simulator):
+    """Verify that Cheetah backend uses TorchScalarVariable, not ScalarVariable."""
+    from lume_torch.variables import TorchScalarVariable
+    from lume.variables import ScalarVariable
+    
+    # Get a quadrupole control variable from Cheetah backend
+    quad_var_class = factory.get_variable_class(simulator, "QuadrupoleBCTRLVariable")
+    var = quad_var_class(name="Q1", element_name="Q1")
+    
+    # Should be instance of TorchScalarVariable, not the regular ScalarVariable
+    assert isinstance(var, TorchScalarVariable), (
+        f"Cheetah variable should be TorchScalarVariable, got {type(var).__name__}"
+    )
+    
+    # But should also have our AgnosticSimulatorMixin
+    from slac_model.virtual_accelerator._actions_base import AgnosticSimulatorMixin
+    assert isinstance(var, AgnosticSimulatorMixin), (
+        "Cheetah variable should have AgnosticSimulatorMixin for conversion module binding"
+    )

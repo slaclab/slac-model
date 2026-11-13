@@ -180,3 +180,28 @@ def get_screen_x(simulator, element_name: str) -> Tensor:
 
 def get_screen_y(simulator, element_name: str) -> Tensor:
 	return _get_screen_centroid(simulator, element_name, "y")
+
+
+# ============================================================================
+# Limit and Control State Variables (Dummy Implementations)
+# ============================================================================
+# These are read-only properties that represent hardware limits and control state.
+# For Cheetah (simulation), we return fixed dummy values that represent typical
+# operating limits.
+
+
+def get_bmin(simulator, element_name: str) -> Tensor:
+	"""Get minimum field strength for a magnet (dummy value for simulation)."""
+	import torch
+	return torch.tensor(-10.0, dtype=torch.float32)
+
+
+def get_bmax(simulator, element_name: str) -> Tensor:
+	"""Get maximum field strength for a magnet (dummy value for simulation)."""
+	import torch
+	return torch.tensor(10.0, dtype=torch.float32)
+
+
+def get_control_state(simulator, element_name: str) -> str:
+	"""Get control state of a magnet (dummy value: always 'Remote')."""
+	return "Remote"

@@ -263,3 +263,26 @@ get_klystron_stat, set_klystron_stat = _make_overlay_funcs(
     to_val=lambda b: 0 if b else 1,
     from_val=_klystron_stat_from_pv,
 )
+
+
+# ============================================================================
+# Limit and Control State Variables (Dummy Implementations)
+# ============================================================================
+# These are read-only properties that represent hardware limits and control state.
+# For Bmad (simulation), we return fixed dummy values that represent typical
+# operating limits.
+
+
+def get_bmin(simulator: Tao, element_name: str) -> float:
+    """Get minimum field strength for a magnet (dummy value for simulation)."""
+    return -10.0
+
+
+def get_bmax(simulator: Tao, element_name: str) -> float:
+    """Get maximum field strength for a magnet (dummy value for simulation)."""
+    return 10.0
+
+
+def get_control_state(simulator: Tao, element_name: str) -> str:
+    """Get control state of a magnet (dummy value: always 'Remote')."""
+    return "Remote"
