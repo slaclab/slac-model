@@ -6,6 +6,9 @@ import pytest
 
 from slac_db import device
 
+pytest.importorskip("pytao")
+pytest.importorskip("lume_bmad")
+
 from slac_model.virtual_accelerator import ACCESSOR_MAPPING, factory, actions
 
 # Import HAS_BMAD to skip entire module if Bmad not available

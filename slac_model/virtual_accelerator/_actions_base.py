@@ -121,7 +121,7 @@ class _QuadrupoleBACTVariableMixin(_ReadbackFromControlMixin):
 
 class _SolenoidBCTRLVariableMixin(WritableActionMixin):
     """Mixin for solenoid strength control variables."""
-    unit: str = "T"
+    unit: str = "kG"
     get_function: str = "get_solenoid_bctrl"
     set_function: str = "set_solenoid_bctrl"
 
@@ -147,7 +147,7 @@ class _CavityPHASVariableMixin(WritableActionMixin):
 
 class _HKickerBCTRLVariableMixin(WritableActionMixin):
     """Mixin for horizontal kicker strength control variables."""
-    unit: str = "T"
+    unit: str = "kG-m"
     get_function: str = "get_hkicker_bctrl"
     set_function: str = "set_hkicker_bctrl"
 
@@ -159,7 +159,7 @@ class _HKickerBACTVariableMixin(_ReadbackFromControlMixin):
 
 class _VKickerBCTRLVariableMixin(WritableActionMixin):
     """Mixin for vertical kicker strength control variables."""
-    unit: str = "T"
+    unit: str = "kG-m"
     get_function: str = "get_vkicker_bctrl"
     set_function: str = "set_vkicker_bctrl"
 
@@ -195,13 +195,13 @@ class _ControlStateVariableMixin(_ReadbackFromControlMixin):
 
 class _BPMXVariableMixin(_ReadbackFromControlMixin):
     """Mixin for BPM X position variables."""
-    unit: str = "m"
+    unit: str = "mm"
     get_function: str = "get_bpm_x"
 
 
 class _BPMYVariableMixin(_ReadbackFromControlMixin):
     """Mixin for BPM Y position variables."""
-    unit: str = "m"
+    unit: str = "mm"
     get_function: str = "get_bpm_y"
 
 
@@ -213,7 +213,7 @@ class _BPMTMITDummyVariableMixin(_ReadbackFromControlMixin):
 
 class _KlystronENLDVariableMixin(WritableActionMixin):
     """Mixin for klystron ENLD (energy load) control variables."""
-    unit: str = "MV"
+    unit: str = "MeV"
     get_function: str = "get_klystron_enld"
     set_function: str = "set_klystron_enld"
 

@@ -6,8 +6,11 @@ import pytest
 
 from slac_db import device
 
+pytest.importorskip("lume_cheetah")
+pytest.importorskip("lume_torch")
+
 from slac_model.virtual_accelerator import ACCESSOR_MAPPING, factory
-from slac_model.virtual_accelerator import torch_actions as actions  # Use torch_actions for Cheetah
+from slac_model.virtual_accelerator import torch_actions as actions
 
 # Skip entire module if Cheetah is not available
 from slac_model.tests.virtual_accelerator.conftest import HAS_CHEETAH
