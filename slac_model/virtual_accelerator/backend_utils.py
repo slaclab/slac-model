@@ -2,12 +2,14 @@
 
 This module provides functions to select the appropriate variable classes and
 model classes based on the simulator type. Variable classes are created on-demand
-for each backend using the generic definitions from actions.py, with conversion
-modules bound per instance to prevent cross-backend interference.
+for each backend using the generic definitions from the appropriate actions module:
+- actions.py for non-torch backends (Bmad/Tao, Impact, etc.)
+- torch_actions.py for torch-based backends (Cheetah)
+
+Conversion modules are bound per instance to prevent cross-backend interference.
 """
 
 from typing import Any, Type
-from pytao import Tao
 from lume.model import LUMEModel
 from lume.variables import Variable
 
@@ -16,7 +18,7 @@ def _get_backend_config(simulator: Any) -> dict[str, Any]:
     """Get backend configuration based on simulator type.
     
     This function identifies the simulator backend and returns the appropriate
-    model class, device name getter function, and conversion module.
+    model class, device name getter function, conversion module, and actions module.
     
     Args:
         simulator: The simulator instance (e.g., Tao, CheetahSimulator).
@@ -26,24 +28,56 @@ def _get_backend_config(simulator: Any) -> dict[str, Any]:
             - 'model_class': LUME model class to use
             - 'get_device_names': Function to get device names from simulator
             - 'conversion_module': The conversion module for get/set functions
+            - 'actions_module': The actions module with variable class definitions
             - 'backend_name': String identifier for the backend
             
     Raises:
         ValueError: If the simulator type is not supported.
     """
-    if isinstance(simulator, Tao):
-        from lume_bmad.model import LUMEBmadModel
-        from slac_model.model_tools.bmad import get_bmad_device_names
-        from slac_model.pv_conversion import bmad
-        
-        return {
-            'model_class': LUMEBmadModel,
-            'get_device_names': get_bmad_device_names,
-            'conversion_module': bmad,
-            'backend_name': 'bmad',
-        }
-    else:
-        raise ValueError(f"Unsupported simulator type: {type(simulator).__name__}")
+    # Try Bmad/Tao backend first (lazy import to make it optional)
+    try:
+        from pytao import Tao
+        if isinstance(simulator, Tao):
+            from lume_bmad.model import LUMEBmadModel
+            from slac_model.model_tools.bmad import get_bmad_device_names
+            from slac_model.pv_conversion import bmad
+            from slac_model.virtual_accelerator import actions
+            
+            return {
+                'model_class': LUMEBmadModel,
+                'get_device_names': get_bmad_device_names,
+                'conversion_module': bmad,
+                'actions_module': actions,
+                'backend_name': 'bmad',
+            }
+    except ImportError:
+        pass
+    
+    # Try Cheetah backend (lazy import to make it optional)
+    try:
+        from lume_cheetah.simulator import CheetahSimulator
+        if isinstance(simulator, CheetahSimulator):
+            from lume_cheetah.model import LUMECheetahModel
+            from slac_model.model_tools.cheetah import get_cheetah_device_names
+            from slac_model.pv_conversion import cheetah
+            from slac_model.virtual_accelerator import torch_actions
+            
+            return {
+                'model_class': LUMECheetahModel,
+                'get_device_names': get_cheetah_device_names,
+                'conversion_module': cheetah,
+                'actions_module': torch_actions,
+                'backend_name': 'cheetah',
+            }
+    except ImportError:
+        pass
+    
+    raise ValueError(
+        f"Unsupported simulator type: {type(simulator).__name__}. "
+        "This could mean neither Bmad nor Cheetah backends are available, "
+        "or the simulator is not an instance of a known backend."
+    )
+
 
 
 def get_variable_class(
@@ -56,6 +90,10 @@ def get_variable_class(
     conversion module bound per instance. This ensures that variables created for
     different simulators (e.g., Bmad and Cheetah) don't interfere with each other.
     
+    The variable class is imported from the appropriate actions module:
+    - actions.py for non-torch backends (Bmad/Tao, Impact, etc.)
+    - torch_actions.py for torch-based backends (Cheetah)
+
     Args:
         simulator: The simulator instance.
         variable_class_name: Name of the variable class to retrieve.
@@ -66,22 +104,21 @@ def get_variable_class(
         
     Raises:
         ValueError: If simulator type is unsupported.
-        AttributeError: If variable class doesn't exist in actions.py or 
-                       required backend functions are missing.
+        AttributeError: If variable class doesn't exist in the appropriate actions module
+                       or required backend functions are missing.
     """
-    from slac_model.virtual_accelerator import actions
-    
     backend_config = _get_backend_config(simulator)
+    actions_module = backend_config['actions_module']
     conversion_module = backend_config['conversion_module']
     backend_name = backend_config['backend_name']
     
-    if not hasattr(actions, variable_class_name):
+    if not hasattr(actions_module, variable_class_name):
         raise AttributeError(
             f"Variable class '{variable_class_name}' not found in "
-            f"slac_model.virtual_accelerator.actions"
+            f"slac_model.virtual_accelerator.{actions_module.__name__.split('.')[-1]}"
         )
     
-    generic_class = getattr(actions, variable_class_name)
+    generic_class = getattr(actions_module, variable_class_name)
     
     # Validate that backend functions exist before creating the subclass
     _validate_backend_functions(generic_class, conversion_module, variable_class_name)

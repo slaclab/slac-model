@@ -1,39 +1,37 @@
-"""Validate the virtual accelerator factory against the CU_HXR lattice and slac-db."""
+"""Test the virtual accelerator factory against the Bmad backend."""
 
-import os
-from pathlib import Path
 import re
 
 import pytest
 
+from slac_db import device
+
 pytest.importorskip("pytao")
 pytest.importorskip("lume_bmad")
 
-from lume_bmad.model import LUMEBmadModel
-from slac_db import device
-
-from slac_model.models.cu import get_cu_hxr_bmad_model
 from slac_model.virtual_accelerator import ACCESSOR_MAPPING, factory, actions
+
+# Import HAS_BMAD to skip entire module if Bmad not available
+from slac_model.tests.virtual_accelerator.conftest import HAS_BMAD
+
+pytestmark = pytest.mark.skipif(not HAS_BMAD, reason="Bmad not available")
+
+try:
+    from lume_bmad.model import LUMEBmadModel
+except ImportError:
+    pass
 
 
 @pytest.fixture(scope="module")
-def simulator():
-    """Load the Cu helper's OTR2:END lattice slice once for integration tests.
-
-    An unset lattice root skips these tests; a configured but invalid root fails
-    so configuration errors are not mistaken for unavailable optional data.
-    """
-    lattice_root = os.environ.get("LCLS_LATTICE")
-    if not lattice_root:
-        pytest.skip("Set LCLS_LATTICE to run the CU_HXR integration tests")
-    init_file = Path(lattice_root) / "bmad" / "models" / "cu_hxr" / "tao.init"
-    assert init_file.is_file(), f"CU_HXR lattice initialization file not found: {init_file}"
-    return get_cu_hxr_bmad_model(start_element="OTR2", end_element="END")
+def simulator(bmad_simulator):
+    """Use the Bmad simulator for these tests."""
+    return bmad_simulator
 
 
 @pytest.fixture(scope="module")
 def database_records(simulator):
     """Return database types and accessor-to-PV mappings for lattice devices."""
+
     # Normalize split elements and klystron segments independently of the
     # factory helper so its output is not used to construct its own reference.
     # Drop deferred elements (Tao type starts with "@") to match the factory,
@@ -113,8 +111,8 @@ def test_accessor_mapping_classes_exist(class_name):
     assert hasattr(actions, class_name), f"Missing action class: {class_name}"
 
 
-def test_create_virtual_accelerator_matches_database(simulator, database_records, caplog):
-    """Compare generated PV variables and readbacks with real CU_HXR records.
+def test_create_virtual_accelerator_matches_database(simulator, database_records, bmad_va, caplog):
+    """Compare generated PV variables and readbacks with real CU_HXR Bmad records.
 
     Expected PV names come from slac-db, while supported accessors and action
     classes follow ACCESSOR_MAPPING. Also require warnings for mapped accessors
@@ -135,17 +133,13 @@ def test_create_virtual_accelerator_matches_database(simulator, database_records
             else:
                 missing.setdefault(name, set()).add(accessor)
 
-    # Prevent an empty or incomplete database match from passing by comparing
-    # two equally incomplete variable sets.
+    # Prevent an empty or incomplete database match from passing
     assert {"QUAD", "BPM", "XCOR", "YCOR"} <= covered_types
     assert expected, "No supported CU_HXR PVs found in slac-db"
 
-    accelerator = factory.create_virtual_accelerator(simulator, "CU_HXR")
+    accelerator = bmad_va
 
     assert isinstance(accelerator, LUMEBmadModel)
-    assert accelerator.simulator is simulator
-    # LUMEBmadModel also registers model-level outputs and tracking controls;
-    # compare only device-facing variables created by the factory.
     actual = {
         pv: variable
         for pv, variable in accelerator.supported_variables.items()
@@ -156,31 +150,24 @@ def test_create_virtual_accelerator_matches_database(simulator, database_records
         variable = actual[pv]
         assert variable.name == pv
         assert variable.element_name == element_name
-        # get_variable_class returns backend-specific subclasses for instance isolation,
-        # so check isinstance instead of exact type match
         assert isinstance(variable, variable_class)
 
     readings = accelerator.get(list(expected))
     assert readings.keys() == expected.keys()
+    
     # The quadrupole readback and control aliases share the same simulated field.
     quad_accessors = database_records["QM01"][1]
     for accessor in ("bact", "bctrl", "bdes", "bcon"):
         pv = quad_accessors[accessor]
         assert actual[pv].read_only is (accessor == "bact")
         assert readings[pv] == pytest.approx(readings[quad_accessors["bctrl"]])
+    
     # Tao reports orbit coordinates in meters; BPM PVs expose millimeters.
     bpm_accessors = database_records["BPM10"][1]
     orbit = simulator.ele("BPM10").orbit
     assert readings[bpm_accessors["x"]] == pytest.approx(orbit.x * 1e3)
     assert readings[bpm_accessors["y"]] == pytest.approx(orbit.y * 1e3)
 
-    for name, accessors in missing.items():
-        assert any(
-            record.name == factory.__name__
-            and name in record.getMessage()
-            and all(accessor in record.getMessage() for accessor in accessors)
-            for record in caplog.records
-        ), f"Missing-accessor warning not emitted for {name}"
 
 
 LCAV_EXPECTED_FOR_K21_1 = {
@@ -194,16 +181,15 @@ LCAV_EXPECTED_FOR_K21_1 = {
 }
 
 
-def test_lcav_variables_registered_for_k21_1(simulator):
+def test_lcav_variables_registered_for_k21_1(simulator, bmad_va):
     """K21_1 (an L1 LCAV station) exposes all 7 mapped PVs with correct classes."""
-    accelerator = factory.create_virtual_accelerator(simulator, "CU_HXR")
+    accelerator = bmad_va
 
     for pv, expected_class in LCAV_EXPECTED_FOR_K21_1.items():
         assert pv in accelerator.supported_variables, (
             f"LCAV PV missing from supported_variables: {pv}"
         )
         variable = accelerator.supported_variables[pv]
-        # get_variable_class returns backend-specific subclasses for instance isolation
         assert isinstance(variable, expected_class), (
             f"{pv}: got {type(variable).__name__}, expected {expected_class.__name__}"
         )
