@@ -236,11 +236,17 @@ def set_cavity_modecfg(simulator: Tao, element_name: str, value: str):
     else:
         raise ValueError(f"Invalid value for CavityMODECFGVariable: {value}")
 
-def _klystron_stat_from_pv(value: int) -> int:
-    if value not in (0, 1):
-        raise ValueError("Status must be 0 (off) or 1 (on)")
-    # overlay control vars are numeric; Bmad's "set ele" rejects a Python bool.
-    return int(value == 0)
+def _make_klystron_beamcode_stat_funcs(on_value: int):
+    # Production BEAMCODE{1,2}_STAT is a float (0.0, 1.0, 2.0, 4.0 bypassed, ...).
+    # Only the beamcode's on-value maps to IN_USE=1; everything else is off.
+    def from_pv(value) -> int:
+        return 1 if value == on_value else 0
+
+    def to_pv(in_use) -> float:
+        return float(on_value) if in_use == 1 else 0.0
+
+    return _make_overlay_funcs("IN_USE", to_val=to_pv, from_val=from_pv)
+
 
 get_klystron_enld, set_klystron_enld = _make_overlay_funcs("ENLD_MEV")
 get_klystron_pdes, set_klystron_pdes = _make_overlay_funcs("PHASE_DEG")
@@ -258,10 +264,11 @@ def get_screen_image(simulator: Tao, element_name: str, shape, pixel_size):
 
 get_screen_image_array_size = _screen_common.get_screen_image_array_size
 get_screen_resolution = _screen_common.get_screen_resolution
-get_klystron_stat, set_klystron_stat = _make_overlay_funcs(
-    "IN_USE",
-    to_val=lambda b: 0 if b else 1,
-    from_val=_klystron_stat_from_pv,
+get_klystron_beamcode1_stat, set_klystron_beamcode1_stat = (
+    _make_klystron_beamcode_stat_funcs(on_value=1)
+)
+get_klystron_beamcode2_stat, set_klystron_beamcode2_stat = (
+    _make_klystron_beamcode_stat_funcs(on_value=2)
 )
 
 

@@ -210,25 +210,27 @@ class TestKlystron:
     def test_pact_is_pdes_alias(self):
         assert bmad_cnv.get_klystron_pact is bmad_cnv.get_klystron_pdes
 
-    def test_stat_roundtrip(self, simulator):
-        bmad_cnv.set_klystron_stat(simulator, "KLYS_OVL", 0)
-        assert bmad_cnv.get_klystron_stat(simulator, "KLYS_OVL") == 0
-        bmad_cnv.set_klystron_stat(simulator, "KLYS_OVL", 1)
-        assert bmad_cnv.get_klystron_stat(simulator, "KLYS_OVL") == 1
+    def test_beamcode1_stat_on(self, simulator):
+        """PV == 1 turns the BEAMCODE1 station on."""
+        bmad_cnv.set_klystron_beamcode1_stat(simulator, "KLYS_OVL", 1.0)
+        assert bmad_cnv.get_klystron_beamcode1_stat(simulator, "KLYS_OVL") == 1.0
 
-    def test_stat_invalid_value_raises(self, simulator):
-        with pytest.raises(ValueError):
-            bmad_cnv.set_klystron_stat(simulator, "KLYS_OVL", 5)
+    @pytest.mark.parametrize("pv_value", [0.0, 2.0, 4.0])
+    def test_beamcode1_stat_off(self, simulator, pv_value):
+        """Any PV value other than 1 leaves BEAMCODE1 station off (no ValueError)."""
+        bmad_cnv.set_klystron_beamcode1_stat(simulator, "KLYS_OVL", pv_value)
+        assert bmad_cnv.get_klystron_beamcode1_stat(simulator, "KLYS_OVL") == 0.0
 
-    def test_stat_boundary_values(self, simulator):
-        """Verify stat handles boundary values 0 and 1 correctly."""
-        # Test 0 (off)
-        bmad_cnv.set_klystron_stat(simulator, "KLYS_OVL", 0)
-        assert bmad_cnv.get_klystron_stat(simulator, "KLYS_OVL") == 0.0
+    def test_beamcode2_stat_on(self, simulator):
+        """PV == 2 turns the BEAMCODE2 station on."""
+        bmad_cnv.set_klystron_beamcode2_stat(simulator, "KLYS_OVL", 2.0)
+        assert bmad_cnv.get_klystron_beamcode2_stat(simulator, "KLYS_OVL") == 2.0
 
-        # Test 1 (on)
-        bmad_cnv.set_klystron_stat(simulator, "KLYS_OVL", 1)
-        assert bmad_cnv.get_klystron_stat(simulator, "KLYS_OVL") == 1.0
+    @pytest.mark.parametrize("pv_value", [0.0, 1.0, 4.0])
+    def test_beamcode2_stat_off(self, simulator, pv_value):
+        """Any PV value other than 2 leaves BEAMCODE2 station off (no ValueError)."""
+        bmad_cnv.set_klystron_beamcode2_stat(simulator, "KLYS_OVL", pv_value)
+        assert bmad_cnv.get_klystron_beamcode2_stat(simulator, "KLYS_OVL") == 0.0
 
 
 class TestScreenImage:

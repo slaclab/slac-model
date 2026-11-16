@@ -225,11 +225,18 @@ class _KlystronPACTVariableMixin(_ReadbackFromControlMixin):
     pass
 
 
-class _KlystronStatVariableMixin(WritableActionMixin):
-    """Mixin for klystron STAT (status) variables."""
+class _KlystronBeamcode1StatVariableMixin(WritableActionMixin):
+    """Mixin for klystron BEAMCODE1 status: PV == 1 -> on (IN_USE=1)."""
     unit: str = "bit"
-    get_function: str = "get_klystron_stat"
-    set_function: str = "set_klystron_stat"
+    get_function: str = "get_klystron_beamcode1_stat"
+    set_function: str = "set_klystron_beamcode1_stat"
+
+
+class _KlystronBeamcode2StatVariableMixin(WritableActionMixin):
+    """Mixin for klystron BEAMCODE2 status: PV == 2 -> on (IN_USE=1)."""
+    unit: str = "bit"
+    get_function: str = "get_klystron_beamcode2_stat"
+    set_function: str = "set_klystron_beamcode2_stat"
 
 
 class _CavityAREQVariableMixin(WritableActionMixin):

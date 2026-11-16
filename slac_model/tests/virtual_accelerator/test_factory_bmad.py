@@ -172,8 +172,8 @@ def test_create_virtual_accelerator_matches_database(simulator, database_records
 
 LCAV_EXPECTED_FOR_K21_1 = {
     "KLYS:LI21:11:ENLD":           actions.KlystronENLDVariable,
-    "KLYS:LI21:11:BEAMCODE1_STAT": actions.KlystronStatVariable,
-    "KLYS:LI21:11:BEAMCODE2_STAT": actions.KlystronStatVariable,
+    "KLYS:LI21:11:BEAMCODE1_STAT": actions.KlystronBeamcode1StatVariable,
+    "KLYS:LI21:11:BEAMCODE2_STAT": actions.KlystronBeamcode2StatVariable,
     "KLYS:LI21:11:PHAS":           actions.KlystronPACTVariable,
     "KLYS:LI21:11:PDES":           actions.KlystronPDESVariable,
     "ACCL:LI21:1:L1S_PDES_DS0":    actions.KlystronPDESVariable,
