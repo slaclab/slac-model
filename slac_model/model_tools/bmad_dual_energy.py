@@ -52,13 +52,15 @@ def beta_match(tao, data, var, data_range, var_range):
     tao.cmd('run')
 
 
-def sxr_dual_energy_match():
+def sxr_dual_energy_match(write_bctrl=False):
     """Match cu_sxr while preserving the cu_hxr energy gain profile.
 
     Builds a CU_SXR VA, applies a live CU_HXR PV snapshot (K21_3..Q50Q2)
     via ``va.set``, energy-fudges to the HXR EDES, then overlays the
     CU_SXR PV snapshot (K21_3..) and fudges to the SXR EDES. Final step
-    is a ``beta_match`` through WS32B using ``q_LTUS``.
+    is a ``beta_match`` through WS32B using ``q_LTUS``. When
+    ``write_bctrl`` is True, each post-match q_LTUS quad BCTRL is pushed
+    back to its EPICS BCTRL record.
     """
     logger.info("Generating Cu Linac Beamcode 1 LIVE model")
     va = get_cu_sxr_bmad_va(start_element="BEGL2", end_element="END")
@@ -89,7 +91,7 @@ def sxr_dual_energy_match():
         logger.info("   %s %s: %7.2f", quad, pv_bctrl, quad_bctrl)
         if write_bctrl:
             import epics
-            epics.caput(pv.replace(pv_bctrl, quad_bctrl)
+            epics.caput(pv_bctrl, quad_bctrl)
     return va
 
 
