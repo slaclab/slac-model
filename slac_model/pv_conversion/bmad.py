@@ -8,6 +8,7 @@ from pytao import Tao
 
 from . import _screen_common
 from ._screen_common import histogram_screen_image
+from .utils import get_magnetic_rigidity
 
 def validate_element(element_type: str):
     def decorator(func):
@@ -112,12 +113,40 @@ def _make_element_attribute_funcs(element_type, field_attr, to_pv, from_pv):
     return get_bctrl, set_bctrl
 
     
-get_quadrupole_bctrl, set_quadrupole_bctrl = _make_element_attribute_funcs(
+_get_quadrupole_bctrl, _set_quadrupole_bctrl = _make_element_attribute_funcs(
     element_type="quadrupole",
     field_attr="B1_GRADIENT",
     to_pv=lambda attrs: -attrs["B1_GRADIENT"] * attrs["L"] * 10,
     from_pv=lambda attrs, value: -value / (attrs["L"] * 10),
 )
+
+
+def _multipole_quadrupole_scale(simulator: Tao, element_name: str) -> float:
+    """Convert K1L to the electron-beam quadrupole PV convention in kG."""
+    attrs = simulator.ele_gen_attribs(element_name)
+    # With field_master, K1L is an integrated gradient in T, not normalized 1/m.
+    if attrs["field_master"]:
+        return -10.0
+    return get_magnetic_rigidity(attrs["P0C"])
+
+
+def get_quadrupole_bctrl(simulator: Tao, element_name: str) -> float:
+    """Read a quadrupole or thin multipole's integrated quadrupole strength."""
+    if simulator.ele_head(element_name)["key"].lower() == "multipole":
+        strength, = simulator.evaluate(f"ele::{element_name}[k1l]")
+        return float(strength) * _multipole_quadrupole_scale(simulator, element_name)
+    return _get_quadrupole_bctrl(simulator, element_name)
+
+
+def set_quadrupole_bctrl(simulator: Tao, element_name: str, value: float):
+    """Set integrated quadrupole strength without changing multipole tilt."""
+    if simulator.ele_head(element_name)["key"].lower() == "multipole":
+        strength = value / _multipole_quadrupole_scale(simulator, element_name)
+        set_element_attribute(simulator, element_name, "K1L", strength)
+        return
+    _set_quadrupole_bctrl(simulator, element_name, value)
+
+
 get_quadrupole_bact = get_quadrupole_bctrl
 
 get_solenoid_bctrl, set_solenoid_bctrl = _make_element_attribute_funcs(

@@ -15,6 +15,8 @@ BEGINNING[ALPHA_B] = 0
 d: drift, l = 0.5
 
 qf: quadrupole, l = 0.25, k1 = 1.2, type = "quadrupole"
+mq: multipole, k1l = 0.3
+msq: multipole, k1l = 0.3, t1
 sol1: solenoid, l = 0.2, ks = 0.05, type = "solenoid"
 kickh: hkicker, l = 0.1, kick = 0.001, type = "hkicker"
 kickv: vkicker, l = 0.1, kick = 0.0005, type = "vkicker"
@@ -27,7 +29,7 @@ otr1: instrument, l = 0, type = "screen"
 klys_ovl: overlay = {cav1[voltage]: enld_mev * 1e6, cav1[phi0]: phase_deg / 360},
   var = {enld_mev, phase_deg, in_use}, type = "overlay"
 
-lat: line = (qf, d, sol1, d, kickh, kickv, d, bnd1, d, bpm1, d, cav1, d, otr1)
+lat: line = (qf, mq, msq, d, sol1, d, kickh, kickv, d, bnd1, d, bpm1, d, cav1, d, otr1)
 
 use, lat
 
