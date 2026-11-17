@@ -23,9 +23,9 @@ except ImportError:
 
 
 @pytest.fixture(scope="module")
-def simulator(bmad_simulator):
-    """Use the Bmad simulator for these tests."""
-    return bmad_simulator
+def simulator(bmad_va):
+    """Use the accelerator's simulator so PV expectations match its lattice."""
+    return bmad_va.simulator
 
 
 @pytest.fixture(scope="module")
@@ -63,7 +63,7 @@ def test_get_simulator_device_names(simulator, database_records):
     """Check normalized, unique device names and inclusion of database matches."""
     names = factory.get_simulator_device_names(simulator)
 
-    assert names[0] == "OTR2"
+    assert names[0] == "CATHODE"
     assert {"QM01", "BPM10", "XC08", "YC08", "K21_1"} <= set(names)
     assert len(names) == len(set(names))
     assert not {"BEGINNING", "END"} & set(names)
@@ -115,8 +115,8 @@ def test_create_virtual_accelerator_matches_database(simulator, database_records
     """Compare generated PV variables and readbacks with real CU_HXR Bmad records.
 
     Expected PV names come from slac-db, while supported accessors and action
-    classes follow ACCESSOR_MAPPING. Also require warnings for mapped accessors
-    absent from the database.
+    classes follow ACCESSOR_MAPPING. Accessor aliases may share a PV only when
+    they refer to the same element and variable class.
     """
     expected = {}
     covered_types = set()
@@ -127,14 +127,18 @@ def test_create_virtual_accelerator_matches_database(simulator, database_records
             if accessor in accessors:
                 pv = accessors[accessor]
                 assert pv, f"Empty PV for {name}.{accessor}"
-                assert pv not in expected, f"Duplicate PV in expected variables: {pv}"
-                expected[pv] = (name, getattr(actions, class_name))
+                expected_variable = (name, getattr(actions, class_name))
+                if pv in expected:
+                    assert expected[pv] == expected_variable, (
+                        f"Conflicting accessor aliases for PV: {pv}"
+                    )
+                expected[pv] = expected_variable
                 covered_types.add(device_type)
             else:
                 missing.setdefault(name, set()).add(accessor)
 
     # Prevent an empty or incomplete database match from passing
-    assert {"QUAD", "BPM", "XCOR", "YCOR"} <= covered_types
+    assert {"QUAD", "BPM", "XCOR", "YCOR", "SOLE", "TCAV", "LCAV"} <= covered_types
     assert expected, "No supported CU_HXR PVs found in slac-db"
 
     accelerator = bmad_va

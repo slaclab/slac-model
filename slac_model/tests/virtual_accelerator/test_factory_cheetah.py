@@ -22,9 +22,9 @@ except ImportError:
     pass
 
 @pytest.fixture(scope="module")
-def simulator(cheetah_simulator):
-    """Use the Cheetah simulator for these tests."""
-    return cheetah_simulator
+def simulator(cheetah_va):
+    """Use the accelerator's simulator so PV expectations match its lattice."""
+    return cheetah_va.simulator
 
 
 @pytest.fixture(scope="module")
@@ -92,13 +92,24 @@ def test_cheetah_device_names(simulator):
     assert all(isinstance(name, str) for name in names)
 
 
+def test_dummy_enum_variable_retains_instance_state(simulator):
+    variable_class = factory.get_variable_class(simulator, "DummyEnumVariable")
+    variable = variable_class(name="TCAV:TEST:FB", element_name="TCAV0")
+    other = variable_class(name="TCAV:TEST:OTHER_FB", element_name="TCAV0")
+
+    assert variable._get(simulator) == "0"
+    variable._set(simulator, "1")
+    assert variable._get(simulator) == "1"
+    assert other._get(simulator) == "0"
+
 
 def test_create_virtual_accelerator_matches_database(simulator, database_records, cheetah_va, caplog):
     """Compare generated PV variables with Cheetah-supported CU_HXR records.
 
     Expected PV names come from slac-db (excluding klystrons), while supported
-    accessors and action classes follow ACCESSOR_MAPPING. Note that Cheetah
-    may not support all device types that Bmad does.
+    accessors and action classes follow ACCESSOR_MAPPING. Cavity mode controls
+    are excluded because Cheetah has no setter. Accessor aliases may share a PV
+    only when they refer to the same element and variable class.
     """
     expected = {}
     covered_types = set()
@@ -106,17 +117,23 @@ def test_create_virtual_accelerator_matches_database(simulator, database_records
     for name, (device_type, accessors) in database_records.items():
         mapping = ACCESSOR_MAPPING.get(device_type, {})
         for accessor, class_name in mapping.items():
+            if class_name == "CavityMODECFGVariable":
+                continue
             if accessor in accessors:
                 pv = accessors[accessor]
                 assert pv, f"Empty PV for {name}.{accessor}"
-                assert pv not in expected, f"Duplicate PV in expected variables: {pv}"
-                expected[pv] = (name, getattr(actions, class_name))
+                expected_variable = (name, getattr(actions, class_name))
+                if pv in expected:
+                    assert expected[pv] == expected_variable, (
+                        f"Conflicting accessor aliases for PV: {pv}"
+                    )
+                expected[pv] = expected_variable
                 covered_types.add(device_type)
             else:
                 missing.setdefault(name, set()).add(accessor)
 
     # Prevent an empty or incomplete database match from passing
-    assert {"QUAD", "BPM", "XCOR", "YCOR"} <= covered_types
+    assert {"QUAD", "BPM", "XCOR", "YCOR", "SOLE", "TCAV"} <= covered_types
     assert expected, "No supported CU_HXR PVs found in slac-db for Cheetah"
 
     accelerator = cheetah_va
