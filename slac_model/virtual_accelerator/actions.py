@@ -48,7 +48,8 @@ from slac_model.virtual_accelerator._actions_base import (
     _KlystronENLDVariableMixin,
     _KlystronPDESVariableMixin,
     _KlystronPACTVariableMixin,
-    _KlystronStatVariableMixin,
+    _KlystronBeamcode1StatVariableMixin,
+    _KlystronBeamcode2StatVariableMixin,
     _CavityAREQVariableMixin,
     _CavityAREQReadbackVariableMixin,
     _CavityPREQVariableMixin,
@@ -181,13 +182,17 @@ class KlystronPACTVariable(KlystronPDESVariable, _KlystronPACTVariableMixin):
     """
 
 
-class KlystronStatVariable(ScalarVariable, _KlystronStatVariableMixin):
+class KlystronBeamcode1StatVariable(ScalarVariable, _KlystronBeamcode1StatVariableMixin):
     """
-    Action that operates on the status of a klystron which acts on an overlay.
-    Note: the element_name for this variable should be set for an overlay element.
+    Klystron BEAMCODE1 status (CU_HXR): PV == 1 -> on (IN_USE=1), else off.
+    element_name must be the klystron's overlay element.
+    """
 
-    Values other than 1.0 (e.g. 0.0, 4.0 for bypassed/standby beamcodes) are
-    treated as "off" and set the overlay's IN_USE to 0.
+
+class KlystronBeamcode2StatVariable(ScalarVariable, _KlystronBeamcode2StatVariableMixin):
+    """
+    Klystron BEAMCODE2 status (CU_SXR): PV == 2 -> on (IN_USE=1), else off.
+    element_name must be the klystron's overlay element.
     """
 
 
