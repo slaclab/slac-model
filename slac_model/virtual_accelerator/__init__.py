@@ -60,8 +60,8 @@ ACCESSOR_MAPPING = {
     },
     "LCAV": {
         "amplitude": "KlystronENLDVariable",
-        "beamcode1": "KlystronStatVariable",
-        "beamcode2": "KlystronStatVariable",
+        "beamcode1": "KlystronBeamcode1StatVariable",
+        "beamcode2": "KlystronBeamcode2StatVariable",
         "phase": "KlystronPACTVariable",
         "phase_desired": "KlystronPDESVariable",
         "phase_desired_beamcode1": "KlystronPDESVariable",
