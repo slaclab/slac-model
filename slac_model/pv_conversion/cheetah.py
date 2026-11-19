@@ -76,12 +76,13 @@ get_quadrupole_bact = get_quadrupole_bctrl
 
 @validate_element(element_type="solenoid")
 def get_solenoid_bctrl(simulator, element_name: str) -> torch.Tensor:
-	return _get_magnet_value(simulator, element_name, "k")
+	return _get_magnet_value(simulator, element_name, "k") * 2
 
 
 @validate_element(element_type="solenoid")
 def set_solenoid_bctrl(simulator, element_name: str, value: torch.Tensor):
-	_set_magnet_value(simulator, element_name, "k", value)
+	# note that cheetah wants Ks/2 unlike bmad which uses Ks directly
+	_set_magnet_value(simulator, element_name, "k", value / 2)
 
 
 get_solenoid_bact = get_solenoid_bctrl
