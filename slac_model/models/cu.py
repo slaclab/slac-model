@@ -51,11 +51,17 @@ def get_cu_hxr_cheetah_model(start_element: str, end_element: str):
     
     segment = segment.subcell(start=start_element.lower(), end=end_element.lower())
 
-    # Create a default single particle beam at 1 MeV
-    initial_beam = ParticleBeam(
-        particles = torch.zeros(1,7),
-        energy = torch.tensor([1.0e6]),
-        particle_charges = torch.tensor([1.0]),
+    # Create a default single particle beam at 6 MeV to match bmad
+    initial_beam = ParticleBeam.from_twiss(
+        energy=torch.tensor(6.0e+06),
+        beta_x=torch.tensor(1.474008287E+01),
+        beta_y=torch.tensor(3.866094787E-01),
+        alpha_x=torch.tensor(-3.14060139283178),
+        alpha_y=torch.tensor(0.2964247257523798),
+        emittance_x=torch.tensor(1e-6 / (135 / 0.511)),
+        emittance_y=torch.tensor(1e-6 / (135 / 0.511)),
+        sigma_tau=torch.tensor(1.0e-12),
+        num_particles=1000,
     )
 
     simulator = CheetahSimulator(segment=segment, initial_beam_distribution=initial_beam)
