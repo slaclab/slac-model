@@ -18,7 +18,14 @@ _MAGNET_DES_ATTRS = {
 }
 
 
-def _klys_pvs(mad_name, beamcode):
+def _extract_address(built_device, accessor):
+    a = built_device.accessor.get(accessor, {})
+    if a:
+        return a.cs_address
+    return None
+
+
+def _klys_pvs(built_device, beamcode):
     """Return (amplitude_pv, phase_pv, beamcode_pv) for a cavity device.
 
     Looks up the beamcode-specific DES accessors on the device,
@@ -27,24 +34,25 @@ def _klys_pvs(mad_name, beamcode):
     'beamcode{N}' accessor entry. Any return slot may be None.
 
     Args:
-        mad_name (str): MAD device name.
+        built_device: A device object returned by
+            `slac_db.device.build_device(...)`, with an `.accessor`
+            mapping of accessor_name -> row with `.cs_address`.
         beamcode (int): Klystron beamcode (e.g. 1 for CU_HXR).
 
     Returns:
         tuple[str | None, str | None, str | None]:
             (amplitude_pv, phase_pv, beamcode_pv)
     """
-    acc = device.get_all_accessors(mad_name) or {}
     ampl_pv = (
-        acc.get(f"amplitude_des_beamcode{beamcode}")
-        or acc.get("amplitude_des")
-        or acc.get("amplitude")
+        _extract_address(built_device, f"amplitude_des_beamcode{beamcode}")
+        or _extract_address(built_device, "amplitude_des")
+        or _extract_address(built_device, "amplitude")
     )
     phase_pv = (
-        acc.get(f"phase_desired_beamcode{beamcode}")
-        or acc.get("phase_desired")
+        _extract_address(built_device, f"phase_desired_beamcode{beamcode}")
+        or _extract_address(built_device, "phase_desired")
     )
-    beamcode_pv = acc.get(f"beamcode{beamcode}")
+    beamcode_pv = _extract_address(built_device, f"beamcode{beamcode}")
     return ampl_pv, phase_pv, beamcode_pv
 
 
@@ -55,6 +63,10 @@ def get_model_pvs(devices, beampath=None):
     Cavity-shaped entries (cs_name prefix in KLYS/ACCL/LCAV) contribute
     their resolved amplitude, phase, and beamcode PVs when present.
     Magnet entries contribute cs_name:BDES per device_type.
+
+    Fetches every device's row + accessors in a single
+    `slac_db.device.build_device(...)` call, then resolves PVs in
+    memory.
 
     Args:
         devices (list[str]): MAD device names (e.g. the return of
@@ -76,10 +88,13 @@ def get_model_pvs(devices, beampath=None):
     beamcode = (
         _BEAM_PATH_BEAMCODE.get(beampath.upper()) if beampath else None
     )
+    devices = list(devices)
+    built = device.build_device(devices)
     pvs = []
     for mad_name in devices:
-        cs_name = device.get_attribute(mad_name, "cs_name")
-        device_type = device.get_attribute(mad_name, "device_type")
+        d = built[mad_name]
+        cs_name = d.cs_name
+        device_type = d.device_type
         cs_prefix = cs_name.split(":")[0] if cs_name else ""
         if cs_prefix in _CAVITY_CS_PREFIXES:
             if beamcode is None:
@@ -88,7 +103,7 @@ def get_model_pvs(devices, beampath=None):
                     f"resolution on cavity-shaped device {mad_name!r}. "
                     f"Supported: {list(_BEAM_PATH_BEAMCODE)}."
                 )
-            for pv in _klys_pvs(mad_name, beamcode):
+            for pv in _klys_pvs(d, beamcode):
                 if pv:
                     pvs.append(pv)
         elif device_type in _MAGNET_DES_ATTRS:
