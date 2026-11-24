@@ -3,8 +3,9 @@
 Builds a live CU_SXR virtual accelerator seeded from CU_HXR PVs
 through the common linac, then re-seeded from CU_SXR PVs and matched
 through the LTU. Bundles its own ``cu_get_edes`` and ``beta_match``
-helpers; :func:`cu_energy_fudge` and :func:`get_model_pvs` are
-imported from :mod:`slac_model.model_tools.bmad`.
+helpers; :func:`cu_energy_fudge` is imported from
+:mod:`slac_model.model_tools.bmad` and :func:`get_model_pvs` from
+:mod:`slac_model.live`.
 """
 
 import logging
@@ -13,7 +14,8 @@ import slac_db.device as dev
 from slac_tools import epics_data
 
 from slac_model.models.cu import get_cu_sxr_bmad_va
-from slac_model.model_tools.bmad import cu_energy_fudge, get_model_pvs
+from slac_model.model_tools.bmad import cu_energy_fudge
+from slac_model.live import get_model_pvs
 
 
 logger = logging.getLogger(__name__)

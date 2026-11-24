@@ -67,6 +67,30 @@ class TestQuadrupole:
     def test_bact_is_bctrl_alias(self):
         assert bmad_cnv.get_quadrupole_bact is bmad_cnv.get_quadrupole_bctrl
 
+    @pytest.mark.parametrize("element_name", ["MQ", "MSQ"])
+    @pytest.mark.parametrize("field_master", [False, True])
+    def test_multipole_strength(self, simulator, element_name, field_master):
+        attrs = simulator.ele_gen_attribs("QF")
+        simulator.cmd(f"set ele {element_name} field_master = {field_master}")
+        strength = attrs["B1_GRADIENT"] * attrs["L"] if field_master else 0.3
+        simulator.cmd(f"set ele {element_name} k1l = {strength}")
+
+        expected = bmad_cnv.get_quadrupole_bctrl(simulator, "QF")
+        assert bmad_cnv.get_quadrupole_bctrl(simulator, element_name) == pytest.approx(
+            expected
+        )
+
+        original_tilt, = simulator.evaluate(f"ele::{element_name}[t1]")
+        for value in (-0.05, 0.0, 0.05):
+            bmad_cnv.set_quadrupole_bctrl(simulator, element_name, value)
+            assert bmad_cnv.get_quadrupole_bctrl(
+                simulator, element_name
+            ) == pytest.approx(value)
+            actual_strength, = simulator.evaluate(f"ele::{element_name}[k1l]")
+            assert actual_strength == pytest.approx(strength * value / expected)
+            actual_tilt, = simulator.evaluate(f"ele::{element_name}[t1]")
+            assert actual_tilt == pytest.approx(original_tilt)
+
 
 class TestSolenoid:
     def test_get_bctrl(self, simulator):
