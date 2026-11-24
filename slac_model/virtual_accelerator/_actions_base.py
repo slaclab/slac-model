@@ -12,7 +12,10 @@ Usage pattern:
     # In a backend-specific module (actions.py or torch_actions.py):
     
     class ScalarVariable(LumeScalarVariable, AgnosticSimulatorMixin):
-        pass
+        def model_post_init(self, __context):
+            # Load backend conversion module
+            from slac_model.pv_conversion import bmad
+            self.set_instance_conversion_module(bmad)
     
     class QuadrupoleBCTRLVariable(ScalarVariable, _QuadrupoleBCTRLVariableMixin):
         pass
@@ -21,6 +24,7 @@ Usage pattern:
 from typing import Any
 from abc import ABC
 
+from pydantic import Field
 from lume.actions import ReadOnlyActionMixin, WritableActionMixin
 
 
@@ -31,8 +35,18 @@ class AgnosticSimulatorMixin(ABC):
     at instantiation time rather than at class definition time. This enables
     the same variable classes to work with different backends by just changing
     which conversion module is bound to each instance.
+    
+    The _instance_conversion_module field is automatically excluded from
+    model_dump() so it doesn't get serialized - it will be re-established
+    when the Variable is instantiated again via model_post_init().
     """
     element_name: str
+    # Pydantic field that's automatically excluded from serialization
+    _instance_conversion_module: Any = Field(
+        default=None,
+        exclude=True,
+        description="Instance-level conversion module (not serialized)"
+    )
 
     def get_conversion_module(self) -> Any:
         """Get the conversion module for this instance.
@@ -46,7 +60,8 @@ class AgnosticSimulatorMixin(ABC):
         if not hasattr(self, '_instance_conversion_module'):
             raise RuntimeError(
                 f"Conversion module not set for {type(self).__name__}. "
-                f"Create instances via get_variable_class() for proper backend binding."
+                f"Ensure this Variable is instantiated through the appropriate mechanism "
+                f"(direct instantiation with model_post_init(), or via get_variable_class())."
             )
         return self._instance_conversion_module
 

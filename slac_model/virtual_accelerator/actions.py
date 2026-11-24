@@ -1,9 +1,8 @@
 """Generic lume `Variable` subclasses for non-torch simulator backends.
 
 This module provides action classes based on ScalarVariable from lume that work
-with Bmad/Tao, Impact, and other non-torch simulators. These variables use
-standard numpy-based operations and can be instantiated with a conversion module
-bound per instance.
+with Bmad/Tao, Impact, and other non-torch simulators. These variables automatically
+load the Bmad conversion module on instantiation through model_post_init().
 
 The device-specific base mixins are defined in _actions_base.py. This module
 combines them with the backend-specific ScalarVariable base class to create
@@ -11,17 +10,12 @@ the final variable classes.
 
 Usage:
     from slac_model.virtual_accelerator.actions import QuadrupoleBCTRLVariable
-    from slac_model.virtual_accelerator import backend_utils
     
-    # Create a simulator instance
-    sim = create_simulator()
+    # Create a variable - conversion module is auto-loaded
+    quad_var = QuadrupoleBCTRLVariable(name="Q1", element_name="Q1_element")
     
-    # Create and configure a variable
-    quad_var = QuadrupoleBCTRLVariable(name="Q1", element_name="Q1")
-    quad_var.set_instance_conversion_module(backend_utils.conversion_module)
-    
-    # Now you can get/set values
-    value = quad_var._get(sim)
+    # Backend is already set up, ready to use
+    value = quad_var._get(bmad_simulator)
 """
 
 from lume.variables import ScalarVariable as LumeScalarVariable
@@ -60,11 +54,43 @@ from slac_model.virtual_accelerator._actions_base import (
 
 
 class ScalarVariable(LumeScalarVariable, AgnosticSimulatorMixin):
-    """Base scalar variable with conversion module support."""
+    """Base scalar variable with Bmad conversion module support.
+    
+    Automatically loads the Bmad conversion module during initialization
+    via model_post_init(), enabling direct variable creation without get_variable_class().
+    """
+    
+    def model_post_init(self, __context) -> None:
+        """Load Bmad conversion module on instantiation."""
+        import importlib
+        try:
+            from slac_model.pv_conversion import bmad
+            self.set_instance_conversion_module(bmad)
+        except ImportError as e:
+            raise RuntimeError(
+                f"Cannot load Bmad conversion module for {type(self).__name__}. "
+                f"Error: {e}"
+            ) from e
 
 
 class EnumVariable(LumeEnumVariable, AgnosticSimulatorMixin):
-    """Base enum variable with conversion module support."""
+    """Base enum variable with Bmad conversion module support.
+    
+    Automatically loads the Bmad conversion module during initialization
+    via model_post_init(), enabling direct variable creation without get_variable_class().
+    """
+    
+    def model_post_init(self, __context) -> None:
+        """Load Bmad conversion module on instantiation."""
+        import importlib
+        try:
+            from slac_model.pv_conversion import bmad
+            self.set_instance_conversion_module(bmad)
+        except ImportError as e:
+            raise RuntimeError(
+                f"Cannot load Bmad conversion module for {type(self).__name__}. "
+                f"Error: {e}"
+            ) from e
 
 
 # ============================================================================
