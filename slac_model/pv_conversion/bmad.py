@@ -277,8 +277,52 @@ def _make_klystron_beamcode_stat_funcs(on_value: int):
     return _make_overlay_funcs("IN_USE", to_val=to_pv, from_val=from_pv)
 
 
-get_klystron_enld, set_klystron_enld = _make_overlay_funcs("ENLD_MEV")
-get_klystron_pdes, set_klystron_pdes = _make_overlay_funcs("PHASE_DEG")
+_get_klystron_enld_overlay, _set_klystron_enld_overlay = _make_overlay_funcs("ENLD_MEV")
+_get_klystron_pdes_overlay, _set_klystron_pdes_overlay = _make_overlay_funcs("PHASE_DEG")
+
+
+def _is_lcavity(simulator: Tao, element_name: str) -> bool:
+    return simulator.ele_head(element_name)["key"].lower() == "lcavity"
+
+
+def get_klystron_enld(simulator: Tao, element_name: str) -> float:
+    """Read klystron ENLD in MeV.
+
+    K-stations drive an overlay carrying ENLD_MEV; special LCAV devices
+    like L0A/L0B are standalone Lcavity elements in Bmad, so their
+    ENLD-equivalent is VOLTAGE * 1e-6.
+    """
+    if _is_lcavity(simulator, element_name):
+        return get_element_attribute(simulator, element_name, "VOLTAGE") * 1e-6
+    return _get_klystron_enld_overlay(simulator, element_name)
+
+
+def set_klystron_enld(simulator: Tao, element_name: str, value: float):
+    if _is_lcavity(simulator, element_name):
+        set_element_attribute(simulator, element_name, "VOLTAGE", value * 1e6)
+        return
+    _set_klystron_enld_overlay(simulator, element_name, value)
+
+
+def get_klystron_pdes(simulator: Tao, element_name: str) -> float:
+    """Read klystron PDES in degrees.
+
+    K-stations drive an overlay carrying PHASE_DEG; special LCAV devices
+    like L0A/L0B are standalone Lcavity elements in Bmad, which store
+    phase as PHI0 (rad / 2pi), so degrees = PHI0 * 360.
+    """
+    if _is_lcavity(simulator, element_name):
+        return get_element_attribute(simulator, element_name, "PHI0") * 360.0
+    return _get_klystron_pdes_overlay(simulator, element_name)
+
+
+def set_klystron_pdes(simulator: Tao, element_name: str, value: float):
+    if _is_lcavity(simulator, element_name):
+        set_element_attribute(simulator, element_name, "PHI0", value / 360.0)
+        return
+    _set_klystron_pdes_overlay(simulator, element_name, value)
+
+
 get_klystron_pact = get_klystron_pdes
 
 
