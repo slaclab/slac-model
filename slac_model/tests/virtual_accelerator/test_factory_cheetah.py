@@ -53,20 +53,16 @@ def database_records(simulator):
 
 def test_get_model_and_variable_classes(simulator):
     """Verify that Cheetah selects the correct model class and variable classes."""
-    from slac_model.virtual_accelerator.backend_utils import (
-        get_model_class,
-        get_variable_class,
-    )
+    from slac_model.virtual_accelerator.backend_utils import get_model_class
     
     assert get_model_class(simulator) is LUMECheetahModel
     
-    # Test that we can get variable classes configured for the simulator.
-    # get_variable_class returns a subclass with the conversion module bound per instance.
-    QuadBCTRLSubclass = get_variable_class(simulator, "QuadrupoleBCTRLVariable")
-    assert issubclass(QuadBCTRLSubclass, actions.QuadrupoleBCTRLVariable)
+    # Test that we can instantiate static variable classes directly.
+    # The static classes automatically load their conversion module via model_post_init().
+    QuadBCTRLVariable = actions.QuadrupoleBCTRLVariable
     
     # Verify that instances have the conversion module bound
-    var = QuadBCTRLSubclass(name="Q1", element_name="Q1")
+    var = QuadBCTRLVariable(name="Q1", element_name="Q1")
     assert var.get_conversion_module() is not None
 
 
@@ -93,9 +89,9 @@ def test_cheetah_device_names(simulator):
 
 
 def test_dummy_enum_variable_retains_instance_state(simulator):
-    variable_class = factory.get_variable_class(simulator, "DummyEnumVariable")
-    variable = variable_class(name="TCAV:TEST:FB", element_name="TCAV0")
-    other = variable_class(name="TCAV:TEST:OTHER_FB", element_name="TCAV0")
+    # Instantiate static variable classes directly
+    variable = actions.DummyEnumVariable(name="TCAV:TEST:FB", element_name="TCAV0")
+    other = actions.DummyEnumVariable(name="TCAV:TEST:OTHER_FB", element_name="TCAV0")
 
     assert variable._get(simulator) == "0"
     variable._set(simulator, "1")
@@ -225,9 +221,8 @@ def test_cheetah_torchscalarvariable_class_used(simulator):
     from lume_torch.variables import TorchScalarVariable
     from lume.variables import ScalarVariable
     
-    # Get a quadrupole control variable from Cheetah backend
-    quad_var_class = factory.get_variable_class(simulator, "QuadrupoleBCTRLVariable")
-    var = quad_var_class(name="Q1", element_name="Q1")
+    # Instantiate a static quadrupole control variable from torch_actions
+    var = actions.QuadrupoleBCTRLVariable(name="Q1", element_name="Q1")
     
     # Should be instance of TorchScalarVariable, not the regular ScalarVariable
     assert isinstance(var, TorchScalarVariable), (
