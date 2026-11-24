@@ -142,11 +142,14 @@ class TestQuadrupole:
 
 class TestSolenoid:
     def test_get_bctrl(self, simulator):
-        expected = 0.5 * cheetah_cnv.get_magnetic_rigidity(ENERGY)
+        # Cheetah stores k = Ks / 2, while BCTRL uses the full Ks.
+        expected = 2 * 0.5 * cheetah_cnv.get_magnetic_rigidity(ENERGY)
         assert math.isclose(cheetah_cnv.get_solenoid_bctrl(simulator, "SOL1"), expected, rel_tol=1e-6)
 
     def test_set_get_roundtrip(self, simulator):
         cheetah_cnv.set_solenoid_bctrl(simulator, "SOL1", torch.tensor(2.0))
+        expected_k = 2.0 / (2 * cheetah_cnv.get_magnetic_rigidity(ENERGY))
+        assert simulator.segment.SOL1.k.item() == pytest.approx(expected_k)
         assert math.isclose(cheetah_cnv.get_solenoid_bctrl(simulator, "SOL1"), torch.tensor(2.0), rel_tol=1e-6)
 
     def test_bact_is_bctrl_alias(self):
