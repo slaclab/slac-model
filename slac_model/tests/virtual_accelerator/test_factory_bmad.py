@@ -339,20 +339,18 @@ def test_factory_skips_actions_with_validation_failures(simulator, caplog):
     """
     from unittest.mock import patch
     
-    # Patch get_variable_class to simulate a validation failure
+    # Patch _get_variable_class_importable to simulate a validation failure
     with patch(
-        "slac_model.virtual_accelerator.factory.get_variable_class"
+        "slac_model.virtual_accelerator.factory._get_variable_class_importable"
     ) as mock_get_cls:
         # Make it raise AttributeError for QuadrupoleBCTRLVariable
-        def side_effect(simulator, class_name):
+        def side_effect(actions_module, class_name, conversion_module=None):
             if class_name == "QuadrupoleBCTRLVariable":
                 raise AttributeError(
-                    f"Backend function 'get_quadrupole_bctrl' required by "
-                    f"{class_name} not found in conversion module"
+                    f"Variable class 'QuadrupoleBCTRLVariable' not found in {actions_module.__name__}"
                 )
-            # For other classes, return a real class
-            from slac_model.virtual_accelerator.backend_utils import get_variable_class as real_get
-            return real_get(simulator, class_name)
+            # For other classes, return a real class from the actions module
+            return getattr(actions_module, class_name)
         
         mock_get_cls.side_effect = side_effect
         

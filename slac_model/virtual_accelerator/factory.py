@@ -10,9 +10,9 @@ from typing import Any
 from slac_db.device import get_all_accessors, get_attribute, get_devices
 from lume.model import LUMEModel
 from slac_model.virtual_accelerator.backend_utils import (
-    get_variable_class,
     get_model_class,
-    get_simulator_device_names
+    get_simulator_device_names,
+    get_variable_class,
 )
 from . import ACCESSOR_MAPPING
 
@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 def get_device_type(device_name: str) -> str:
     """ Get the device type for the given device name from slac-db """
     return get_attribute(device_name, "device_type")
+
 
 def create_virtual_accelerator(simulator: Any, beampath: str) -> LUMEModel:
     """ Create a virtual accelerator instance based on the provided simulator instance and beampath name
@@ -41,7 +42,7 @@ def create_virtual_accelerator(simulator: Any, beampath: str) -> LUMEModel:
 
     # get device names and model class for the simulator
     simulated_device_names = get_simulator_device_names(simulator)
-    lume_model_module = get_model_class(simulator)
+    lume_model_class = get_model_class(simulator)
 
     known_devices = set(get_devices(include_inactive=True, beampath=beampath))
 
@@ -72,12 +73,13 @@ def create_virtual_accelerator(simulator: Any, beampath: str) -> LUMEModel:
             pv = device_accessors[accessor]
             
             try:
-                # get the variable class for the accessor, with backend already configured
+                # Get the backend-specific variable class with conversion module bound.
+                # This ensures the class has the correct conversion functions available.
                 _cls = get_variable_class(simulator, variable_class_name)
                 # create the LUME variable for this accessor and add it to the list
                 lume_variables.append(_cls(name=pv, element_name=device_name))
-            except AttributeError as e:
-                # Skip this action if backend functions are missing or class doesn't exist
+            except (AttributeError, ValueError) as e:
+                # Skip this action if the class doesn't exist or required backend functions are missing
                 logger.warning(
                     "Skipping variable %s for device %s: %s",
                     variable_class_name,
@@ -85,7 +87,7 @@ def create_virtual_accelerator(simulator: Any, beampath: str) -> LUMEModel:
                     str(e),
                 )
             
-    virtual_accelerator = lume_model_module(
+    virtual_accelerator = lume_model_class(
         simulator,
         action_variables=lume_variables,
     )

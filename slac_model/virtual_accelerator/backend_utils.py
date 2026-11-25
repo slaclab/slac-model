@@ -14,7 +14,7 @@ from lume.model import LUMEModel
 from lume.variables import Variable
 
 
-def _get_backend_config(simulator: Any) -> dict[str, Any]:
+def get_backend_config(simulator: Any) -> dict[str, Any]:
     """Get backend configuration based on simulator type.
     
     This function identifies the simulator backend and returns the appropriate
@@ -84,11 +84,11 @@ def get_variable_class(
     simulator: Any,
     variable_class_name: str,
 ) -> Type[Variable]:
-    """Get a backend-specific subclass for the given simulator.
+    """Get the variable class for the given simulator backend.
     
-    This function creates a subclass of the generic variable class that has the
-    conversion module bound per instance. This ensures that variables created for
-    different simulators (e.g., Bmad and Cheetah) don't interfere with each other.
+    Returns the static variable class from the appropriate actions module.
+    The class automatically binds its conversion module via model_post_init(),
+    ensuring the correct backend is used for get/set operations.
     
     The variable class is imported from the appropriate actions module:
     - actions.py for non-torch backends (Bmad/Tao, Impact, etc.)
@@ -99,18 +99,16 @@ def get_variable_class(
         variable_class_name: Name of the variable class to retrieve.
         
     Returns:
-        A subclass of the generic variable class that automatically binds the
-        conversion module per instance.
+        The static variable class with built-in backend binding.
         
     Raises:
         ValueError: If simulator type is unsupported.
         AttributeError: If variable class doesn't exist in the appropriate actions module
                        or required backend functions are missing.
     """
-    backend_config = _get_backend_config(simulator)
+    backend_config = get_backend_config(simulator)
     actions_module = backend_config['actions_module']
     conversion_module = backend_config['conversion_module']
-    backend_name = backend_config['backend_name']
     
     if not hasattr(actions_module, variable_class_name):
         raise AttributeError(
@@ -118,23 +116,12 @@ def get_variable_class(
             f"slac_model.virtual_accelerator.{actions_module.__name__.split('.')[-1]}"
         )
     
-    generic_class = getattr(actions_module, variable_class_name)
+    variable_class = getattr(actions_module, variable_class_name)
     
-    # Validate that backend functions exist before creating the subclass
-    _validate_backend_functions(generic_class, conversion_module, variable_class_name)
+    # Validate that backend functions exist
+    _validate_backend_functions(variable_class, conversion_module, variable_class_name)
     
-    # Create a backend-specific subclass that binds the conversion module at instantiation
-    class BackendSpecificVariable(generic_class):
-        """Backend-specific subclass with bound conversion module."""
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-            self.set_instance_conversion_module(conversion_module)
-    
-    # Preserve the original class name for debugging and introspection
-    BackendSpecificVariable.__name__ = f"{generic_class.__name__}_{backend_name}"
-    BackendSpecificVariable.__qualname__ = f"{generic_class.__qualname__}_{backend_name}"
-    
-    return BackendSpecificVariable
+    return variable_class
 
 
 def get_model_class(simulator: Any) -> Type[LUMEModel]:
@@ -149,7 +136,7 @@ def get_model_class(simulator: Any) -> Type[LUMEModel]:
     Raises:
         ValueError: If simulator type is unsupported.
     """
-    backend_config = _get_backend_config(simulator)
+    backend_config = get_backend_config(simulator)
     return backend_config['model_class']
 
 
@@ -202,6 +189,6 @@ def get_simulator_device_names(simulator: Any) -> list[str]:
     Raises:
         ValueError: If simulator type is unsupported.
     """
-    backend_config = _get_backend_config(simulator)
+    backend_config = get_backend_config(simulator)
     device_name_getter = backend_config['get_device_names']
     return device_name_getter(simulator)

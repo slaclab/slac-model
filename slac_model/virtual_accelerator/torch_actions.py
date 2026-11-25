@@ -1,8 +1,8 @@
 """Generic lume `Variable` subclasses for Cheetah (torch-based) simulator backend.
 
 This module provides action classes based on TorchScalarVariable from lume_torch
-that work with the Cheetah simulator. These variables use torch-based operations
-and can be instantiated with a conversion module bound per instance.
+that work with the Cheetah simulator. These variables automatically load the
+Cheetah conversion module on instantiation through model_post_init().
 
 The device-specific base mixins are defined in _actions_base.py. This module
 combines them with the backend-specific TorchScalarVariable base class to create
@@ -10,17 +10,12 @@ the final variable classes.
 
 Usage:
     from slac_model.virtual_accelerator.torch_actions import QuadrupoleBCTRLVariable
-    from slac_model.virtual_accelerator import backend_utils
     
-    # Create a Cheetah simulator instance
-    cheetah_sim = create_cheetah_simulator()
+    # Create a variable - conversion module is auto-loaded
+    quad_var = QuadrupoleBCTRLVariable(name="Q1", element_name="Q1_element")
     
-    # Create and configure a variable
-    quad_var = QuadrupoleBCTRLVariable(name="Q1", element_name="Q1")
-    quad_var.set_instance_conversion_module(backend_utils.cheetah_conversion)
-    
-    # Now you can get/set values
-    value = quad_var._get(cheetah_sim)
+    # Backend is already set up, ready to use
+    value = quad_var._get(cheetah_simulator)
 """
 
 from lume.variables import EnumVariable as LumeEnumVariable
@@ -59,11 +54,41 @@ from slac_model.virtual_accelerator._actions_base import (
 
 
 class ScalarVariable(LumeTorchScalarVariable, AgnosticSimulatorMixin):
-    """Base torch scalar variable with conversion module support for Cheetah simulator."""
+    """Base torch scalar variable with Cheetah conversion module support.
+    
+    Automatically loads the Cheetah conversion module during initialization
+    via model_post_init(), enabling direct variable creation without get_variable_class().
+    """
+    
+    def model_post_init(self, __context) -> None:
+        """Load Cheetah conversion module on instantiation."""
+        try:
+            from slac_model.pv_conversion import cheetah
+            self.set_instance_conversion_module(cheetah)
+        except ImportError as e:
+            raise RuntimeError(
+                f"Cannot load Cheetah conversion module for {type(self).__name__}. "
+                f"Error: {e}"
+            ) from e
 
 
 class EnumVariable(LumeEnumVariable, AgnosticSimulatorMixin):
-    """Base enum variable with conversion module support for Cheetah simulator."""
+    """Base enum variable with Cheetah conversion module support.
+    
+    Automatically loads the Cheetah conversion module during initialization
+    via model_post_init(), enabling direct variable creation without get_variable_class().
+    """
+    
+    def model_post_init(self, __context) -> None:
+        """Load Cheetah conversion module on instantiation."""
+        try:
+            from slac_model.pv_conversion import cheetah
+            self.set_instance_conversion_module(cheetah)
+        except ImportError as e:
+            raise RuntimeError(
+                f"Cannot load Cheetah conversion module for {type(self).__name__}. "
+                f"Error: {e}"
+            ) from e
 
 
 # ============================================================================
