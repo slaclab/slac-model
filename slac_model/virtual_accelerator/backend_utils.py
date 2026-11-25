@@ -14,7 +14,7 @@ from lume.model import LUMEModel
 from lume.variables import Variable
 
 
-def _get_backend_config(simulator: Any) -> dict[str, Any]:
+def get_backend_config(simulator: Any) -> dict[str, Any]:
     """Get backend configuration based on simulator type.
     
     This function identifies the simulator backend and returns the appropriate
@@ -107,7 +107,7 @@ def get_variable_class(
         AttributeError: If variable class doesn't exist in the appropriate actions module
                        or required backend functions are missing.
     """
-    backend_config = _get_backend_config(simulator)
+    backend_config = get_backend_config(simulator)
     actions_module = backend_config['actions_module']
     conversion_module = backend_config['conversion_module']
     backend_name = backend_config['backend_name']
@@ -149,7 +149,7 @@ def get_model_class(simulator: Any) -> Type[LUMEModel]:
     Raises:
         ValueError: If simulator type is unsupported.
     """
-    backend_config = _get_backend_config(simulator)
+    backend_config = get_backend_config(simulator)
     return backend_config['model_class']
 
 
@@ -202,6 +202,6 @@ def get_simulator_device_names(simulator: Any) -> list[str]:
     Raises:
         ValueError: If simulator type is unsupported.
     """
-    backend_config = _get_backend_config(simulator)
+    backend_config = get_backend_config(simulator)
     device_name_getter = backend_config['get_device_names']
     return device_name_getter(simulator)
