@@ -11,17 +11,32 @@ import pytest
 import tempfile
 from pathlib import Path
 
-from slac_model.virtual_accelerator.torch_actions import (
-    QuadrupoleBCTRLVariable,
-    QuadrupoleBACTVariable,
-    SolenoidBCTRLVariable,
-    CavityAREQVariable,
-)
-from slac_model.virtual_accelerator.actions import (
-    QuadrupoleBCTRLVariable as BmadQuadrupoleBCTRLVariable,
-)
+# Import backend availability flags from conftest
+from slac_model.tests.virtual_accelerator.conftest import HAS_CHEETAH, HAS_BMAD
+
+# Guard Cheetah imports
+if HAS_CHEETAH:
+    try:
+        from slac_model.virtual_accelerator.torch_actions import (
+            QuadrupoleBCTRLVariable,
+            QuadrupoleBACTVariable,
+            SolenoidBCTRLVariable,
+            CavityAREQVariable,
+        )
+    except ImportError:
+        HAS_CHEETAH = False
+
+# Guard Bmad imports
+if HAS_BMAD:
+    try:
+        from slac_model.virtual_accelerator.actions import (
+            QuadrupoleBCTRLVariable as BmadQuadrupoleBCTRLVariable,
+        )
+    except ImportError:
+        HAS_BMAD = False
 
 
+@pytest.mark.skipif(not HAS_CHEETAH, reason="Cheetah not available")
 class TestVariableDirectInstantiation:
     """Test that Variables can be directly instantiated without get_variable_class()."""
     
@@ -48,6 +63,7 @@ class TestVariableDirectInstantiation:
         assert var.element_name == "CAVITY_1"
         assert hasattr(var, '_instance_conversion_module')
     
+    @pytest.mark.skipif(not HAS_BMAD, reason="Bmad not available")
     def test_bmad_quadrupole_instantiation(self):
         """Bmad Variables also support direct instantiation."""
         var = BmadQuadrupoleBCTRLVariable(name="Q2", element_name="Q2_element")
@@ -56,6 +72,7 @@ class TestVariableDirectInstantiation:
         assert hasattr(var, '_instance_conversion_module')
 
 
+@pytest.mark.skipif(not HAS_CHEETAH, reason="Cheetah not available")
 class TestVariableSerialization:
     """Test Variable serialization and deserialization with model_dump/model_validate."""
     
@@ -150,6 +167,7 @@ class TestVariableSerialization:
         assert var_restored.element_name == var_original.element_name
         assert hasattr(var_restored, '_instance_conversion_module')
     
+    @pytest.mark.skipif(not HAS_BMAD, reason="Bmad not available")
     def test_bmad_roundtrip(self):
         """Bmad Variables serialize/deserialize with correct backend module."""
         var_original = BmadQuadrupoleBCTRLVariable(name="Q6", element_name="Q6_element")
@@ -170,6 +188,7 @@ class TestVariableSerialization:
         assert conversion_module is not None
 
 
+@pytest.mark.skipif(not HAS_CHEETAH, reason="Cheetah not available")
 class TestVariableMultipleRoundtrips:
     """Test that Variables survive multiple serialization roundtrips."""
     
@@ -207,6 +226,7 @@ class TestVariableMultipleRoundtrips:
         assert hasattr(var3, '_instance_conversion_module')
 
 
+@pytest.mark.skipif(not HAS_CHEETAH, reason="Cheetah not available")
 class TestBackendModuleAutoLoading:
     """Test that model_post_init() correctly auto-loads backend modules."""
     
@@ -221,6 +241,7 @@ class TestBackendModuleAutoLoading:
         assert hasattr(conversion_module, '__name__')
         assert 'cheetah' in conversion_module.__name__.lower() or hasattr(conversion_module, '__file__')
     
+    @pytest.mark.skipif(not HAS_BMAD, reason="Bmad not available")
     def test_bmad_backend_loaded(self):
         """Bmad Variables load Bmad conversion module automatically."""
         var = BmadQuadrupoleBCTRLVariable(name="Q9", element_name="Q9_element")
