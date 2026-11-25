@@ -200,6 +200,25 @@ def test_lcav_variables_registered_for_k21_1(simulator, bmad_va):
         assert variable.name == pv
 
 
+LCAV_LCAVITY_EXPECTED_PDES_PVS = {
+    "L0A": ["ACCL:IN20:300:L0A_PDES_DS0", "ACCL:IN20:300:L0A_PDES_DS1"],
+    "L0B": ["ACCL:IN20:400:L0B_PDES_DS0", "ACCL:IN20:400:L0B_PDES_DS1"],
+}
+
+
+@pytest.mark.parametrize("device_name", sorted(LCAV_LCAVITY_EXPECTED_PDES_PVS))
+def test_lcavity_lcav_pdes_variables_registered_and_readable(
+    bmad_va, device_name
+):
+    """L0A/L0B are LCAV in slac-db but Lcavity in Bmad; PDES PVs still work."""
+    for pv in LCAV_LCAVITY_EXPECTED_PDES_PVS[device_name]:
+        assert pv in bmad_va.supported_variables, f"missing {pv}"
+        variable = bmad_va.supported_variables[pv]
+        assert isinstance(variable, actions.KlystronPDESVariable)
+        assert variable.element_name == device_name
+        variable._get(bmad_va.simulator)
+
+
 def test_backend_function_validation_passes_for_valid_variables(simulator):
     """Verify that validation passes for variable classes with all required functions."""
     from slac_model.virtual_accelerator.backend_utils import get_variable_class
