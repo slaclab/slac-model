@@ -24,7 +24,7 @@ Usage pattern:
 from typing import Any
 from abc import ABC
 
-from pydantic import Field
+from pydantic import PrivateAttr
 from lume.actions import ReadOnlyActionMixin, WritableActionMixin
 
 
@@ -36,17 +36,12 @@ class AgnosticSimulatorMixin(ABC):
     the same variable classes to work with different backends by just changing
     which conversion module is bound to each instance.
     
-    The _instance_conversion_module field is automatically excluded from
-    model_dump() so it doesn't get serialized - it will be re-established
-    when the Variable is instantiated again via model_post_init().
+    The _instance_conversion_module private attribute is never serialized
+    and will be re-established when the Variable is instantiated again via model_post_init().
     """
     element_name: str
-    # Pydantic field that's automatically excluded from serialization
-    _instance_conversion_module: Any = Field(
-        default=None,
-        exclude=True,
-        description="Instance-level conversion module (not serialized)"
-    )
+    # Pydantic private attribute - not a field, never serialized
+    _instance_conversion_module: Any = PrivateAttr(default=None)
 
     def get_conversion_module(self) -> Any:
         """Get the conversion module for this instance.
@@ -57,7 +52,7 @@ class AgnosticSimulatorMixin(ABC):
         Raises:
             RuntimeError: If no conversion module has been set.
         """
-        if not hasattr(self, '_instance_conversion_module'):
+        if not hasattr(self, '_instance_conversion_module') or self._instance_conversion_module is None:
             raise RuntimeError(
                 f"Conversion module not set for {type(self).__name__}. "
                 f"Ensure this Variable is instantiated through the appropriate mechanism "

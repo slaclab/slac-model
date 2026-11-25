@@ -30,7 +30,7 @@ if HAS_CHEETAH:
 if HAS_BMAD:
     try:
         from slac_model.virtual_accelerator.actions import (
-            QuadrupoleBCTRLVariable as BmadQuadrupoleBCTRLVariable,
+            BmadQuadrupoleBCTRLVariable,
         )
     except ImportError:
         HAS_BMAD = False
