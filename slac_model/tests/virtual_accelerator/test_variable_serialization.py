@@ -80,23 +80,17 @@ class TestVariableSerialization:
         """model_dump() should exclude private fields that shouldn't be serialized."""
         var = QuadrupoleBCTRLVariable(name="Q4", element_name="Q4_element")
         
-        # Include everything
-        config_full = var.model_dump()
-        
-        # The private _instance_conversion_module should be there (Pydantic includes it)
-        # but we'll handle exclusion during archiving
-        
-        # Exclude private fields
-        config_clean = var.model_dump(exclude={
-            '_instance_conversion_module',
-            '_backend_conversion_module_path'
-        })
-        
-        # Check clean config has the essential fields
-        assert "name" in config_clean
-        assert "element_name" in config_clean
-        # Private fields should not be there
-        assert '_instance_conversion_module' not in config_clean
+        config = var.model_dump()
+
+        assert "name" in config
+        assert "element_name" in config
+        assert '_instance_conversion_module' not in config
+
+        restored = QuadrupoleBCTRLVariable.model_validate(config)
+        assert restored.name == var.name
+        assert restored.element_name == var.element_name
+        assert restored.read_only == var.read_only
+        assert restored.get_conversion_module() is var.get_conversion_module()
     
     def test_quadrupole_model_validate_roundtrip(self):
         """model_validate() reconstructs Variable with backend setup."""
